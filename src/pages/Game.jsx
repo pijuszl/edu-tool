@@ -1,50 +1,113 @@
+import React, { useState, useMemo, useEffect, useRef } from 'react'
 import { Canvas } from '@react-three/fiber'
-import { OrbitControls } from '@react-three/drei'
-import { useState, useMemo, useEffect } from 'react'
+import { OrbitControls, useGLTF, useAnimations } from '@react-three/drei'
+import { Vector3 } from 'three'
+import * as THREE from 'three'
+import { useFrame } from '@react-three/fiber'
+import catModel from '/src/assets/cat.gltf?url'
+import { Suspense } from 'react'
+
+// Scaling constants
+const CELL_SIZE = 0.5
+const CHARACTER_SCALE = 0.001
+const GRID_SPACING = CELL_SIZE * Math.sqrt(3)
+const CELL_HEIGHT = CELL_SIZE * 0.3
+const ROTATION_LERP_FACTOR = 5
+
+// Movement timing configuration
+const ANIMATION_DURATION = 2.0 // Base duration for movement
+const ANIMATION_TIMESCALE = 0.7 // Animation speed multiplier
+
+// Easing function for smooth movement
+const easeInOutQuad = (t) => {
+  return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t
+}
 
 const DIRECTIONS_EVEN = [
-  { di: 0, dj: 1 }, // East
-  { di: -1, dj: 0 }, // Northeast
-  { di: -1, dj: -1 }, // Northwest
-  { di: 0, dj: -1 }, // West
-  { di: 1, dj: -1 }, // Southwest
-  { di: 1, dj: 0 }, // Southeast
+  { di: 0, dj: 1 },
+  { di: -1, dj: 0 },
+  { di: -1, dj: -1 },
+  { di: 0, dj: -1 },
+  { di: 1, dj: -1 },
+  { di: 1, dj: 0 },
 ]
 
 const DIRECTIONS_ODD = [
-  { di: 0, dj: 1 }, // East
-  { di: -1, dj: 1 }, // Northeast
-  { di: -1, dj: 0 }, // Northwest
-  { di: 0, dj: -1 }, // West
-  { di: 1, dj: 0 }, // Southwest
-  { di: 1, dj: 1 }, // Southeast
+  { di: 0, dj: 1 },
+  { di: -1, dj: 1 },
+  { di: -1, dj: 0 },
+  { di: 0, dj: -1 },
+  { di: 1, dj: 0 },
+  { di: 1, dj: 1 },
 ]
 
+function getShortestRotation(current, target) {
+  const PI2 = Math.PI * 2
+  const diff = (target - current) % PI2
+  return diff > Math.PI ? diff - PI2 : diff < -Math.PI ? diff + PI2 : diff
+}
+
 function Character({ position, rotation, targetPosition, onMoveComplete }) {
-  const { scene, animations } = useGLTF('/player.gltf')
-  const { actions, mixer } = useAnimations(animations, scene)
+  useGLTF.preload(catModel)
+  const { scene, animations } = useGLTF(catModel)
+  const { actions } = useAnimations(animations, scene)
   const characterRef = useRef()
   const currentPos = useRef(new Vector3(...position))
+  const startPos = useRef(new Vector3(...position))
+  const currentRotation = useRef(rotation)
+  const animationTime = useRef(0)
+  const isMoving = useRef(false)
+
+  useEffect(() => {
+    if (actions.Scene) {
+      actions.Scene.setEffectiveTimeScale(ANIMATION_TIMESCALE)
+      actions.Scene.reset().stop()
+    }
+  }, [actions])
+
+  useEffect(() => {
+    if (targetPosition && !isMoving.current) {
+      startPos.current.copy(currentPos.current)
+      animationTime.current = 0
+      isMoving.current = true
+
+      if (actions.Scene) {
+        actions.Scene.reset().fadeIn(0.2).play()
+      }
+    }
+  }, [targetPosition])
 
   useFrame((state, delta) => {
-    if (characterRef.current && targetPosition) {
-      const distance = currentPos.current.distanceTo(targetPosition)
+    if (!characterRef.current) return
 
-      if (distance > 0.1) {
-        // Move towards target position
-        currentPos.current.lerp(targetPosition, delta * 5)
-        characterRef.current.position.copy(currentPos.current)
+    // Handle movement
+    if (targetPosition && isMoving.current) {
+      animationTime.current += delta
+      const progress = Math.min(animationTime.current / ANIMATION_DURATION, 1)
+      const easedProgress = easeInOutQuad(progress)
 
-        // Play walk animation if not already playing
-        if (!actions.Walk?.isRunning()) {
-          actions.Walk?.play()
+      currentPos.current.lerpVectors(
+        startPos.current,
+        targetPosition,
+        easedProgress
+      )
+      characterRef.current.position.copy(currentPos.current)
+
+      if (progress >= 1) {
+        if (actions.Scene) {
+          actions.Scene.fadeOut(0.2).stop()
         }
-      } else {
-        // Snap to final position and stop animation
-        characterRef.current.position.copy(targetPosition)
-        actions.Walk?.stop()
+        isMoving.current = false
         onMoveComplete()
       }
+    }
+
+    // Handle rotation
+    if (characterRef.current.rotation) {
+      const targetRot = rotation - Math.PI / 2 + Math.PI
+      const rotDelta = getShortestRotation(currentRotation.current, targetRot)
+      currentRotation.current += rotDelta * delta * ROTATION_LERP_FACTOR
+      characterRef.current.rotation.y = currentRotation.current
     }
   })
 
@@ -53,18 +116,19 @@ function Character({ position, rotation, targetPosition, onMoveComplete }) {
       ref={characterRef}
       object={scene}
       position={position}
-      rotation={[0, rotation, 0]}
-      scale={[0.5, 0.5, 0.5]}
+      scale={[CHARACTER_SCALE, CHARACTER_SCALE, CHARACTER_SCALE]}
+      rotation={[0, Math.PI, 0]}
     />
   )
 }
 
-const Game = ({ worldData }) => {
+const HexGame = ({ worldData }) => {
   const [characterPos, setCharacterPos] = useState({ i: 0, j: 0 })
-  const [characterDir, setCharacterDir] = useState(0)
+  const [characterDir, setCharacterDir] = useState(1)
   const [initialized, setInitialized] = useState(false)
+  const [targetPosition, setTargetPosition] = useState(null)
+  const [isMoving, setIsMoving] = useState(false)
 
-  // Initialize character position to first available block
   useEffect(() => {
     if (!initialized) {
       for (let i = 0; i < worldData.length; i++) {
@@ -79,17 +143,16 @@ const Game = ({ worldData }) => {
     }
   }, [worldData, initialized])
 
-  // Generate hexagonal grid
   const hexagons = useMemo(() => {
     const cells = []
     for (let i = 0; i < worldData.length; i++) {
       for (let j = 0; j < worldData[i].length; j++) {
         if (worldData[i][j] === 1) {
-          const x = j * Math.sqrt(3) + (i % 2 === 1 ? Math.sqrt(3) / 2 : 0)
-          const z = i * 1.5
+          const x = j * GRID_SPACING + (i % 2 === 1 ? GRID_SPACING / 2 : 0)
+          const z = i * GRID_SPACING * 0.75
           cells.push(
             <mesh key={`${i}-${j}`} position={[x, 0, z]}>
-              <cylinderGeometry args={[1, 1, 1, 6]} />
+              <cylinderGeometry args={[CELL_SIZE, CELL_SIZE, CELL_HEIGHT, 6]} />
               <meshStandardMaterial color="#607D8B" />
             </mesh>
           )
@@ -99,18 +162,17 @@ const Game = ({ worldData }) => {
     return cells
   }, [worldData])
 
-  // Calculate character position in 3D space
-  const charPosition = useMemo(() => {
-    const { i, j } = characterPos
-    const x = j * Math.sqrt(3) + (i % 2 === 1 ? Math.sqrt(3) / 2 : 0)
-    return [x, 0.5, i * 1.5]
-  }, [characterPos])
+  const turnLeft = () => !isMoving && setCharacterDir((prev) => (prev + 1) % 6)
+  const turnRight = () => !isMoving && setCharacterDir((prev) => (prev + 5) % 6)
 
-  // Movement functions
-  const turnLeft = () => setCharacterDir((prev) => (prev + 5) % 6)
-  const turnRight = () => setCharacterDir((prev) => (prev + 1) % 6)
+  const getPositionFromGrid = (i, j) => {
+    const x = j * GRID_SPACING + (i % 2 === 1 ? GRID_SPACING / 2 : 0)
+    return new Vector3(x, 0.05, i * GRID_SPACING * 0.75)
+  }
 
   const moveForward = () => {
+    if (isMoving) return
+
     const { i, j } = characterPos
     const directions = i % 2 === 0 ? DIRECTIONS_EVEN : DIRECTIONS_ODD
     const delta = directions[characterDir]
@@ -124,45 +186,68 @@ const Game = ({ worldData }) => {
       newJ < worldData[newI].length &&
       worldData[newI][newJ] === 1
     ) {
+      setIsMoving(true)
+      setTargetPosition(getPositionFromGrid(newI, newJ))
       setCharacterPos({ i: newI, j: newJ })
     }
   }
 
+  const handleMoveComplete = () => {
+    setIsMoving(false)
+    setTargetPosition(null)
+  }
+
   return (
-    <div style={{ width: '100vw', height: '100vh' }}>
-      <Canvas camera={{ position: [0, 15, 0], fov: 50 }}>
+    <div className="h-screen w-screen">
+      <Canvas camera={{ position: [-2, 2, 3], fov: 50 }}>
         <ambientLight intensity={0.5} />
         <pointLight position={[10, 10, 10]} />
-
         {hexagons}
-
-        <mesh
-          position={charPosition}
-          rotation={[0, (characterDir * Math.PI) / 3, 0]}
-        >
-          <boxGeometry args={[0.8, 1, 0.8]} />
-          <meshStandardMaterial color="#E91E63" />
-        </mesh>
-
+        <Suspense fallback={null}>
+          <Character
+            position={getPositionFromGrid(characterPos.i, characterPos.j)}
+            rotation={(characterDir * Math.PI) / 3}
+            targetPosition={targetPosition}
+            onMoveComplete={handleMoveComplete}
+          />
+        </Suspense>
         <OrbitControls enablePan={true} enableZoom={true} enableRotate={true} />
       </Canvas>
 
-      <div
-        style={{
-          position: 'absolute',
-          top: 20,
-          left: '50%',
-          transform: 'translateX(-50%)',
-          display: 'flex',
-          gap: '10px',
-        }}
-      >
-        <button onClick={turnLeft}>↩ Turn Left</button>
-        <button onClick={moveForward}>↑ Move Forward</button>
-        <button onClick={turnRight}>↪ Turn Right</button>
+      <div className="absolute left-1/2 top-5 flex -translate-x-1/2 transform gap-2">
+        <button
+          className="rounded bg-blue-500 px-4 py-2 text-white disabled:bg-gray-400"
+          onClick={turnLeft}
+          disabled={isMoving}
+        >
+          ↩ Turn Left
+        </button>
+        <button
+          className="rounded bg-blue-500 px-4 py-2 text-white disabled:bg-gray-400"
+          onClick={moveForward}
+          disabled={isMoving}
+        >
+          ↑ Move Forward
+        </button>
+        <button
+          className="rounded bg-blue-500 px-4 py-2 text-white disabled:bg-gray-400"
+          onClick={turnRight}
+          disabled={isMoving}
+        >
+          ↪ Turn Right
+        </button>
       </div>
     </div>
   )
 }
 
-export default Game
+const exampleWorld = [
+  [1, 1, 0, 1],
+  [0, 1, 1, 0],
+  [1, 0, 1, 1],
+  [0, 1, 0, 1],
+]
+
+export default function Game() {
+  return <HexGame worldData={exampleWorld} />
+}
