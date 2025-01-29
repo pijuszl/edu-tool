@@ -2,9 +2,9 @@ import React, { useState, useMemo, useEffect, useRef } from 'react'
 import { Canvas } from '@react-three/fiber'
 import { OrbitControls, useGLTF, useAnimations } from '@react-three/drei'
 import { Vector3 } from 'three'
-import * as THREE from 'three'
 import { useFrame } from '@react-three/fiber'
-import catModel from '/src/assets/cat.gltf?url'
+import catModel from '/src/assets/cat/cat.gltf?url'
+import level1 from '/src/assets/world/level1.json?url'
 import { Suspense } from 'react'
 
 // Scaling constants
@@ -122,7 +122,11 @@ function Character({ position, rotation, targetPosition, onMoveComplete }) {
   )
 }
 
-const HexGame = ({ worldData }) => {
+const Game = () => {
+  const [worldData, setWorldData] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+
   const [characterPos, setCharacterPos] = useState({ i: 0, j: 0 })
   const [characterDir, setCharacterDir] = useState(1)
   const [initialized, setInitialized] = useState(false)
@@ -131,15 +135,29 @@ const HexGame = ({ worldData }) => {
 
   useEffect(() => {
     if (!initialized) {
-      for (let i = 0; i < worldData.length; i++) {
-        for (let j = 0; j < worldData[i].length; j++) {
-          if (worldData[i][j] === 1) {
-            setCharacterPos({ i, j })
-            setInitialized(true)
-            return
+      fetch(level1) // Adjust path if using different location
+        .then((response) => {
+          if (!response.ok) throw new Error('Failed to load world data')
+          return response.json()
+        })
+        .then((data) => {
+          for (let i = 0; i < data.length; i++) {
+            for (let j = 0; j < data[i].length; j++) {
+              if (data[i][j] === 1) {
+                setCharacterPos({ i, j })
+                setInitialized(true)
+                setWorldData(data)
+                setLoading(false)
+
+                return
+              }
+            }
           }
-        }
-      }
+        })
+        .catch((err) => {
+          setError(err.message)
+          setLoading(false)
+        })
     }
   }, [worldData, initialized])
 
@@ -197,6 +215,9 @@ const HexGame = ({ worldData }) => {
     setTargetPosition(null)
   }
 
+  if (loading) return <div>Loading world...</div>
+  if (error) return <div>Error: {error}</div>
+
   return (
     <div className="h-screen w-screen">
       <Canvas camera={{ position: [-2, 2, 3], fov: 50 }}>
@@ -241,13 +262,4 @@ const HexGame = ({ worldData }) => {
   )
 }
 
-const exampleWorld = [
-  [1, 1, 0, 1],
-  [0, 1, 1, 0],
-  [1, 0, 1, 1],
-  [0, 1, 0, 1],
-]
-
-export default function Game() {
-  return <HexGame worldData={exampleWorld} />
-}
+export default Game

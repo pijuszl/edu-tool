@@ -2,13 +2,6 @@ import { BrowserRouter, Routes, Route } from 'react-router'
 import './App.css'
 import Game from './pages/Game'
 
-const exampleWorld = [
-  [1, 1, 0, 1],
-  [0, 1, 1, 0],
-  [1, 0, 1, 1],
-  [0, 1, 0, 1],
-]
-
 function App() {
   return (
     <BrowserRouter>
@@ -16,10 +9,12 @@ function App() {
         <Route
           path="/"
           element={
-            <h1 className="text-3xl font-bold underline">Hello world!</h1>
+            <h1 className="text-3xl font-bold underline">
+              Sveiki! Žaidimas yra /game puslapyje
+            </h1>
           }
         />
-        <Route path="/game" element={<Game worldData={exampleWorld} />} />
+        <Route path="/game" element={<Game />} />
       </Routes>
     </BrowserRouter>
   )
