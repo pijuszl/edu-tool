@@ -5,6 +5,7 @@ import React, {
   useRef,
   Suspense,
   useCallback,
+  useLayoutEffect,
 } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
 import { OrbitControls, useGLTF, useAnimations } from '@react-three/drei'
@@ -29,9 +30,9 @@ interface GridPosition {
 // Adjust these so that the hexagon tile fills a 1x1 cell.
 const CELL_SIZE = 1.0
 const CHARACTER_SCALE = 0.001
-const HEXAGON_SCALE = 1.0 // Tile scale (adjust as needed)
-const GRID_SPACING = 1.0 // Use full tile width so they touch exactly
-const CELL_HEIGHT = 0.1
+//const HEXAGON_SCALE = 1.0 // Tile scale (adjust as needed)
+//const GRID_SPACING = HEXAGON_SCALE * Math.sqrt(3) // Use full tile width so they touch exactly
+//const CELL_HEIGHT = HEXAGON_SCALE * 0.3
 const ROTATION_LERP_FACTOR = 5
 
 const ANIMATION_DURATION = 2.0
@@ -75,38 +76,69 @@ function getShortestRotation(current: number, target: number): number {
   return diff > Math.PI ? diff - PI2 : diff < -Math.PI ? diff + PI2 : diff
 }
 
+interface HexagonMetrics {
+  width: number
+  height: number
+  scale: number
+  horizontalSpacing: number
+  verticalSpacing: number
+  topSurfaceHeight: number
+}
+
+const useHexagonMetrics = () => {
+  const { nodes } = useGLTF(sceneModel) as unknown as GLTF & {
+    nodes: Record<string, THREE.Mesh>
+  }
+  const [metrics, setMetrics] = useState<HexagonMetrics | null>(null)
+
+  useEffect(() => {
+    if (nodes.Object_186?.geometry) {
+      const mesh = new THREE.Mesh(nodes.Object_186.geometry)
+      const box = new THREE.Box3().setFromObject(mesh)
+
+      // Get actual model dimensions
+      const width = box.max.x - box.min.x
+      const height = box.max.y - box.min.y // Use Y-axis for vertical height
+      const desiredWidth = 1.0 // Target width in world units
+      const scale = desiredWidth / width
+
+      setMetrics({
+        width,
+        height,
+        scale,
+        horizontalSpacing: desiredWidth,
+        verticalSpacing: (desiredWidth * Math.sqrt(3)) / 2,
+        topSurfaceHeight: box.max.y * scale, // Highest point after scaling
+      })
+    }
+  }, [nodes])
+
+  return metrics
+}
+
 // ==================================================
 // Hexagon Component
 // ==================================================
 interface HexagonProps {
   position: [number, number, number]
+  scale: number
 }
 
-function Hexagon({ position }: HexagonProps) {
-  // Load the scene GLTF that contains the hexagon and tree geometry.
+function Hexagon({ position, scale }: HexagonProps) {
   const { nodes } = useGLTF(sceneModel) as unknown as GLTF & {
-    nodes: Record<string, any>
+    nodes: Record<string, THREE.Mesh>
   }
+  const ref = useRef<THREE.Mesh>(null)
 
-  // We define a simple random function based on position for consistency.
   const seed = useMemo(
     () => position[0] * 1000 + position[1] * 100 + position[2],
     [position]
   )
+
   const rand = useCallback(
     (offset: number) => Math.abs((Math.sin(seed + offset) * 10000) % 1),
     [seed]
   )
-
-  // Define colors based on a simple rule.
-  // For the hexagon tile, we use a fixed color (adjust as desired).
-  const hexColor = new THREE.Color('#50784b')
-  // For tree decorations, compute a color that varies slightly.
-  const treeColor = useMemo(() => {
-    // For example, vary the lightness slightly based on the seed.
-    const t = rand(5)
-    return new THREE.Color().setHSL(0.1, 0.5, 0.6 + t * 0.1)
-  }, [rand])
 
   // Generate tree decorations.
   const [decorations, setDecorations] = useState<JSX.Element[]>([])
@@ -138,25 +170,31 @@ function Hexagon({ position }: HexagonProps) {
           rotation={[0, rand(i + 10) * Math.PI * 2, 0]}
           scale={0.5} // Increase tree size
         >
-          <meshStandardMaterial color={treeColor.getStyle()} />
+          <meshToonMaterial color="#81bd00" />
         </mesh>
       )
     }
     setDecorations(decor)
-  }, [nodes, position, rand, treeColor])
+  }, [nodes, position, rand])
+
+  useLayoutEffect(() => {
+    if (ref.current) {
+      // Center geometry at bottom
+      ref.current.geometry.computeBoundingBox()
+      const box = ref.current.geometry.boundingBox!
+      ref.current.position.y = box.max.y * scale // Align bottom with ground
+    }
+  }, [scale])
 
   return (
     <>
       <mesh
+        ref={ref}
         geometry={nodes.Object_186.geometry}
         position={position}
-        scale={[HEXAGON_SCALE, HEXAGON_SCALE, HEXAGON_SCALE]}
+        scale={[scale, scale, scale]}
       >
-        <meshStandardMaterial
-          color={hexColor.getStyle()}
-          flatShading={true}
-          side={DoubleSide}
-        />
+        <meshToonMaterial color="#00ff59" side={DoubleSide} />
       </mesh>
       {decorations}
     </>
@@ -183,7 +221,7 @@ function Character({
   const { actions } = useAnimations(animations, scene)
   const characterRef = useRef<THREE.Group>(null)
   // Adjust the cat’s y-position so it sits properly on the ground.
-  const adjustedPosition = [position[0], position[1] - 0.2, position[2]] as [
+  const adjustedPosition = [position[0], position[1], position[2]] as [
     number,
     number,
     number,
@@ -260,6 +298,7 @@ function Character({
 // Game Component
 // ==================================================
 const Game: React.FC = () => {
+  const hexMetrics = useHexagonMetrics()
   const [worldData, setWorldData] = useState<number[][]>([])
   const [loading, setLoading] = useState<boolean>(true)
   const [error, setError] = useState<string | null>(null)
@@ -288,28 +327,75 @@ const Game: React.FC = () => {
     }
   }, [initialized])
 
+  //   useEffect(() => {
+  //   if (!initialized) {
+  //     const data: number[][] = level1
+  //     setWorldData(data)
+  //     setInitialized(true)
+  //     setLoading(false)
+  //   }
+  // }, [initialized])
+
   // Create hexagon tiles so they exactly touch one another.
+  // const hexagons = useMemo(() => {
+  //   const cells: JSX.Element[] = []
+  //   for (let i = 0; i < worldData.length; i++) {
+  //     for (let j = 0; j < worldData[i].length; j++) {
+  //       if (worldData[i][j] === 1) {
+  //         // For a flat layout, offset x on odd rows.
+  //         const x = j * GRID_SPACING + (i % 2 === 1 ? GRID_SPACING / 2 : 0)
+  //         // Vertical spacing is 0.75*GRID_SPACING.
+  //         const z = i * (GRID_SPACING * 0.75)
+  //         cells.push(<Hexagon key={`${i}-${j}`} position={[x, 0, z]} />)
+  //       }
+  //     }
+  //   }
+  //   return cells
+  // }, [worldData])
   const hexagons = useMemo(() => {
+    if (!hexMetrics) return []
+
     const cells: JSX.Element[] = []
     for (let i = 0; i < worldData.length; i++) {
       for (let j = 0; j < worldData[i].length; j++) {
         if (worldData[i][j] === 1) {
-          // For a flat layout, offset x on odd rows.
-          const x = j * GRID_SPACING + (i % 2 === 1 ? GRID_SPACING / 2 : 0)
-          // Vertical spacing is 0.75*GRID_SPACING.
-          const z = i * (GRID_SPACING * 0.75)
-          cells.push(<Hexagon key={`${i}-${j}`} position={[x, 0, z]} />)
+          const x =
+            j * hexMetrics.horizontalSpacing +
+            (i % 2 === 1 ? hexMetrics.horizontalSpacing / 2 : 0)
+          const z = i * hexMetrics.verticalSpacing
+
+          cells.push(
+            <Hexagon
+              key={`${i}-${j}`}
+              position={[x, 0, z]} // Position at ground level
+              scale={hexMetrics.scale}
+            />
+          )
         }
       }
     }
     return cells
-  }, [worldData])
+  }, [worldData, hexMetrics])
 
   // Place the cat exactly on the ground.
-  const getPositionFromGrid = (i: number, j: number): THREE.Vector3 => {
-    const x = j * GRID_SPACING + (i % 2 === 1 ? GRID_SPACING / 2 : 0)
-    const z = i * (GRID_SPACING * 0.75)
-    return new THREE.Vector3(x, 0, z)
+  // const getPositionFromGrid = (i: number, j: number): THREE.Vector3 => {
+  //   const x = j * GRID_SPACING + (i % 2 === 1 ? GRID_SPACING / 2 : 0)
+  //   const z = i * (GRID_SPACING * 0.75)
+  //   return new THREE.Vector3(x, 0, z)
+  // }
+  const getPositionFromGrid = (
+    i: number,
+    j: number,
+    metrics: HexagonMetrics | null
+  ): THREE.Vector3 => {
+    if (!metrics) return new THREE.Vector3() // Fallback for null case
+
+    const x =
+      j * metrics.horizontalSpacing +
+      (i % 2 === 1 ? metrics.horizontalSpacing / 2 : 0)
+    const z = i * metrics.verticalSpacing
+
+    return new THREE.Vector3(x, metrics.topSurfaceHeight, z)
   }
 
   const turnLeft = () => {
@@ -341,7 +427,7 @@ const Game: React.FC = () => {
       worldData[newI][newJ] === 1
     ) {
       setIsMoving(true)
-      setTargetPosition(getPositionFromGrid(newI, newJ))
+      setTargetPosition(getPositionFromGrid(newI, newJ, hexMetrics))
       setCharacterPos({ i: newI, j: newJ })
     }
   }
@@ -357,22 +443,29 @@ const Game: React.FC = () => {
   return (
     <div className="h-screen w-screen">
       <Canvas camera={{ position: [-2, 2, 3], fov: 50 }}>
-        <ambientLight intensity={0.5} />
-        <pointLight position={[10, 10, 10]} />
+        <ambientLight intensity={1} />
+        <directionalLight
+          position={[3, 5, 2]} // X, Y, Z position of the light
+          intensity={1.5}
+          castShadow
+        />
         <Suspense fallback={null}>
           {hexagons}
-          <Character
-            position={
-              getPositionFromGrid(characterPos.i, characterPos.j).toArray() as [
-                number,
-                number,
-                number,
-              ]
-            }
-            rotation={(characterDir * Math.PI) / 3}
-            targetPosition={targetPosition}
-            onMoveComplete={handleMoveComplete}
-          />
+
+          {hexMetrics && (
+            <Character
+              position={
+                getPositionFromGrid(
+                  characterPos.i,
+                  characterPos.j,
+                  hexMetrics // Add metrics as third argument
+                ).toArray() as [number, number, number]
+              }
+              rotation={(characterDir * Math.PI) / 3}
+              targetPosition={targetPosition}
+              onMoveComplete={handleMoveComplete}
+            />
+          )}
         </Suspense>
         <OrbitControls enablePan={true} enableZoom={true} enableRotate={true} />
       </Canvas>
