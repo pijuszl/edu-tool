@@ -1,29 +1,46 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react'
-import { Canvas } from '@react-three/fiber'
+// src/pages/Game.tsx
+
+import React, { useState, useMemo, useEffect, useRef, Suspense } from 'react'
+import { Canvas, useFrame } from '@react-three/fiber'
 import { OrbitControls, useGLTF, useAnimations } from '@react-three/drei'
 import { Vector3 } from 'three'
-import { useFrame } from '@react-three/fiber'
-import catModel from '/src/assets/cat/cat.gltf?url'
-import level1 from '/src/assets/world/level1.json?url'
-import { Suspense } from 'react'
+import catModel from '/src/assets/cat/cat.gltf'
+import level1 from '/src/assets/world/level1.json'
 
-// Scaling constants
+// ==================================================
+// Constants
+// ==================================================
 const CELL_SIZE = 0.5
 const CHARACTER_SCALE = 0.001
 const GRID_SPACING = CELL_SIZE * Math.sqrt(3)
 const CELL_HEIGHT = CELL_SIZE * 0.3
 const ROTATION_LERP_FACTOR = 5
 
-// Movement timing configuration
 const ANIMATION_DURATION = 2.0 // Base duration for movement
 const ANIMATION_TIMESCALE = 0.7 // Animation speed multiplier
 
-// Easing function for smooth movement
-const easeInOutQuad = (t) => {
+// ==================================================
+// Utility Functions
+// ==================================================
+const easeInOutQuad = (t: number): number => {
   return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t
 }
 
-const DIRECTIONS_EVEN = [
+function getShortestRotation(current: number, target: number): number {
+  const PI2 = Math.PI * 2
+  const diff = (target - current) % PI2
+  return diff > Math.PI ? diff - PI2 : diff < -Math.PI ? diff + PI2 : diff
+}
+
+// ==================================================
+// Direction Types & Arrays
+// ==================================================
+interface Direction {
+  di: number
+  dj: number
+}
+
+const DIRECTIONS_EVEN: Direction[] = [
   { di: 0, dj: 1 },
   { di: -1, dj: 0 },
   { di: -1, dj: -1 },
@@ -32,7 +49,7 @@ const DIRECTIONS_EVEN = [
   { di: 1, dj: 0 },
 ]
 
-const DIRECTIONS_ODD = [
+const DIRECTIONS_ODD: Direction[] = [
   { di: 0, dj: 1 },
   { di: -1, dj: 1 },
   { di: -1, dj: 0 },
@@ -41,17 +58,26 @@ const DIRECTIONS_ODD = [
   { di: 1, dj: 1 },
 ]
 
-function getShortestRotation(current, target) {
-  const PI2 = Math.PI * 2
-  const diff = (target - current) % PI2
-  return diff > Math.PI ? diff - PI2 : diff < -Math.PI ? diff + PI2 : diff
+// ==================================================
+// Character Component
+// ==================================================
+interface CharacterProps {
+  position: [number, number, number]
+  rotation: number
+  targetPosition: Vector3 | null
+  onMoveComplete: () => void
 }
 
-function Character({ position, rotation, targetPosition, onMoveComplete }) {
+function Character({
+  position,
+  rotation,
+  targetPosition,
+  onMoveComplete,
+}: CharacterProps) {
   useGLTF.preload(catModel)
   const { scene, animations } = useGLTF(catModel)
   const { actions } = useAnimations(animations, scene)
-  const characterRef = useRef()
+  const characterRef = useRef<any>(null)
   const currentPos = useRef(new Vector3(...position))
   const startPos = useRef(new Vector3(...position))
   const currentRotation = useRef(rotation)
@@ -75,7 +101,7 @@ function Character({ position, rotation, targetPosition, onMoveComplete }) {
         actions.Scene.reset().fadeIn(0.2).play()
       }
     }
-  }, [targetPosition])
+  }, [targetPosition, actions])
 
   useFrame((state, delta) => {
     if (!characterRef.current) return
@@ -103,7 +129,7 @@ function Character({ position, rotation, targetPosition, onMoveComplete }) {
     }
 
     // Handle rotation
-    if (characterRef.current.rotation) {
+    if (characterRef.current && characterRef.current.rotation) {
       const targetRot = rotation - Math.PI / 2 + Math.PI
       const rotDelta = getShortestRotation(currentRotation.current, targetRot)
       currentRotation.current += rotDelta * delta * ROTATION_LERP_FACTOR
@@ -122,47 +148,45 @@ function Character({ position, rotation, targetPosition, onMoveComplete }) {
   )
 }
 
-const Game = () => {
-  const [worldData, setWorldData] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
+// ==================================================
+// Game Component
+// ==================================================
+interface GridPosition {
+  i: number
+  j: number
+}
 
-  const [characterPos, setCharacterPos] = useState({ i: 0, j: 0 })
-  const [characterDir, setCharacterDir] = useState(1)
-  const [initialized, setInitialized] = useState(false)
-  const [targetPosition, setTargetPosition] = useState(null)
-  const [isMoving, setIsMoving] = useState(false)
+const Game: React.FC = () => {
+  const [worldData, setWorldData] = useState<number[][]>([])
+  const [loading, setLoading] = useState<boolean>(true)
+  const [error, setError] = useState<string | null>(null)
+
+  const [characterPos, setCharacterPos] = useState<GridPosition>({ i: 0, j: 0 })
+  const [characterDir, setCharacterDir] = useState<number>(1)
+  const [initialized, setInitialized] = useState<boolean>(false)
+  const [targetPosition, setTargetPosition] = useState<Vector3 | null>(null)
+  const [isMoving, setIsMoving] = useState<boolean>(false)
 
   useEffect(() => {
     if (!initialized) {
-      fetch(level1) // Adjust path if using different location
-        .then((response) => {
-          if (!response.ok) throw new Error('Failed to load world data')
-          return response.json()
-        })
-        .then((data) => {
-          for (let i = 0; i < data.length; i++) {
-            for (let j = 0; j < data[i].length; j++) {
-              if (data[i][j] === 1) {
-                setCharacterPos({ i, j })
-                setInitialized(true)
-                setWorldData(data)
-                setLoading(false)
-
-                return
-              }
-            }
+      // Assuming level1 is of type number[][]
+      const data: number[][] = level1
+      for (let i = 0; i < data.length; i++) {
+        for (let j = 0; j < data[i].length; j++) {
+          if (data[i][j] === 1) {
+            setCharacterPos({ i, j })
+            setInitialized(true)
+            setWorldData(data)
+            setLoading(false)
+            return
           }
-        })
-        .catch((err) => {
-          setError(err.message)
-          setLoading(false)
-        })
+        }
+      }
     }
-  }, [worldData, initialized])
+  }, [initialized])
 
   const hexagons = useMemo(() => {
-    const cells = []
+    const cells: JSX.Element[] = []
     for (let i = 0; i < worldData.length; i++) {
       for (let j = 0; j < worldData[i].length; j++) {
         if (worldData[i][j] === 1) {
@@ -180,10 +204,19 @@ const Game = () => {
     return cells
   }, [worldData])
 
-  const turnLeft = () => !isMoving && setCharacterDir((prev) => (prev + 1) % 6)
-  const turnRight = () => !isMoving && setCharacterDir((prev) => (prev + 5) % 6)
+  const turnLeft = () => {
+    if (!isMoving) {
+      setCharacterDir((prev) => (prev + 1) % 6)
+    }
+  }
 
-  const getPositionFromGrid = (i, j) => {
+  const turnRight = () => {
+    if (!isMoving) {
+      setCharacterDir((prev) => (prev + 5) % 6)
+    }
+  }
+
+  const getPositionFromGrid = (i: number, j: number): Vector3 => {
     const x = j * GRID_SPACING + (i % 2 === 1 ? GRID_SPACING / 2 : 0)
     return new Vector3(x, 0.05, i * GRID_SPACING * 0.75)
   }
@@ -226,7 +259,14 @@ const Game = () => {
         {hexagons}
         <Suspense fallback={null}>
           <Character
-            position={getPositionFromGrid(characterPos.i, characterPos.j)}
+            position={
+              // Convert the Vector3 to a tuple [number, number, number]
+              getPositionFromGrid(characterPos.i, characterPos.j).toArray() as [
+                number,
+                number,
+                number,
+              ]
+            }
             rotation={(characterDir * Math.PI) / 3}
             targetPosition={targetPosition}
             onMoveComplete={handleMoveComplete}
