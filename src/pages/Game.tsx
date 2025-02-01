@@ -1,36 +1,41 @@
-// src/pages/Game.tsx
-
-import React, { useState, useMemo, useEffect, useRef, Suspense } from 'react'
+import React, {
+  useState,
+  useMemo,
+  useEffect,
+  useRef,
+  Suspense,
+  useCallback,
+} from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
 import { OrbitControls, useGLTF, useAnimations } from '@react-three/drei'
-import { Vector3 } from 'three'
+import * as THREE from 'three'
+import type { GLTF } from 'three/examples/jsm/loaders/GLTFLoader'
 import catModel from '/src/assets/cat/cat.gltf'
+import sceneModel from '/src/assets/scene/scene.gltf'
 import level1 from '/src/assets/world/level1.json'
+import { DoubleSide } from 'three'
+
+// ==================================================
+// Types
+// ==================================================
+interface GridPosition {
+  i: number
+  j: number
+}
 
 // ==================================================
 // Constants
 // ==================================================
-const CELL_SIZE = 0.5
+// Adjust these so that the hexagon tile fills a 1x1 cell.
+const CELL_SIZE = 1.0
 const CHARACTER_SCALE = 0.001
-const GRID_SPACING = CELL_SIZE * Math.sqrt(3)
-const CELL_HEIGHT = CELL_SIZE * 0.3
+const HEXAGON_SCALE = 1.0 // Tile scale (adjust as needed)
+const GRID_SPACING = 1.0 // Use full tile width so they touch exactly
+const CELL_HEIGHT = 0.1
 const ROTATION_LERP_FACTOR = 5
 
-const ANIMATION_DURATION = 2.0 // Base duration for movement
-const ANIMATION_TIMESCALE = 0.7 // Animation speed multiplier
-
-// ==================================================
-// Utility Functions
-// ==================================================
-const easeInOutQuad = (t: number): number => {
-  return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t
-}
-
-function getShortestRotation(current: number, target: number): number {
-  const PI2 = Math.PI * 2
-  const diff = (target - current) % PI2
-  return diff > Math.PI ? diff - PI2 : diff < -Math.PI ? diff + PI2 : diff
-}
+const ANIMATION_DURATION = 2.0
+const ANIMATION_TIMESCALE = 0.7
 
 // ==================================================
 // Direction Types & Arrays
@@ -59,12 +64,112 @@ const DIRECTIONS_ODD: Direction[] = [
 ]
 
 // ==================================================
+// Utility Functions
+// ==================================================
+const easeInOutQuad = (t: number): number =>
+  t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t
+
+function getShortestRotation(current: number, target: number): number {
+  const PI2 = Math.PI * 2
+  const diff = (target - current) % PI2
+  return diff > Math.PI ? diff - PI2 : diff < -Math.PI ? diff + PI2 : diff
+}
+
+// ==================================================
+// Hexagon Component
+// ==================================================
+interface HexagonProps {
+  position: [number, number, number]
+}
+
+function Hexagon({ position }: HexagonProps) {
+  // Load the scene GLTF that contains the hexagon and tree geometry.
+  const { nodes } = useGLTF(sceneModel) as unknown as GLTF & {
+    nodes: Record<string, any>
+  }
+
+  // We define a simple random function based on position for consistency.
+  const seed = useMemo(
+    () => position[0] * 1000 + position[1] * 100 + position[2],
+    [position]
+  )
+  const rand = useCallback(
+    (offset: number) => Math.abs((Math.sin(seed + offset) * 10000) % 1),
+    [seed]
+  )
+
+  // Define colors based on a simple rule.
+  // For the hexagon tile, we use a fixed color (adjust as desired).
+  const hexColor = new THREE.Color('#50784b')
+  // For tree decorations, compute a color that varies slightly.
+  const treeColor = useMemo(() => {
+    // For example, vary the lightness slightly based on the seed.
+    const t = rand(5)
+    return new THREE.Color().setHSL(0.1, 0.5, 0.6 + t * 0.1)
+  }, [rand])
+
+  // Generate tree decorations.
+  const [decorations, setDecorations] = useState<JSX.Element[]>([])
+  useEffect(() => {
+    if (!nodes.Object_12?.geometry) return
+
+    const numDecorations = Math.floor(rand(0) * 4) // 0–3 trees per hexagon
+    const radius = 0.4 // How far from the center trees should appear
+    const angleStep = (Math.PI * 2) / 6
+    const availableCorners = [0, 1, 2, 3, 4, 5]
+    const decor: JSX.Element[] = []
+
+    for (let i = 0; i < numDecorations; i++) {
+      const cornerIdx = Math.floor(rand(i) * availableCorners.length)
+      const corner = availableCorners.splice(cornerIdx, 1)[0]
+      const angle = angleStep * corner
+
+      const pos: [number, number, number] = [
+        position[0] + Math.cos(angle) * radius,
+        position[1], // at ground level
+        position[2] + Math.sin(angle) * radius,
+      ]
+
+      decor.push(
+        <mesh
+          key={`tree-${position.join(',')}-${i}`}
+          geometry={nodes.Object_12.geometry}
+          position={pos}
+          rotation={[0, rand(i + 10) * Math.PI * 2, 0]}
+          scale={0.5} // Increase tree size
+        >
+          <meshStandardMaterial color={treeColor.getStyle()} />
+        </mesh>
+      )
+    }
+    setDecorations(decor)
+  }, [nodes, position, rand, treeColor])
+
+  return (
+    <>
+      <mesh
+        geometry={nodes.Object_186.geometry}
+        position={position}
+        scale={[HEXAGON_SCALE, HEXAGON_SCALE, HEXAGON_SCALE]}
+      >
+        <meshStandardMaterial
+          color={hexColor.getStyle()}
+          flatShading={true}
+          side={DoubleSide}
+        />
+      </mesh>
+      {decorations}
+    </>
+  )
+}
+
+// ==================================================
 // Character Component
 // ==================================================
 interface CharacterProps {
   position: [number, number, number]
   rotation: number
-  targetPosition: Vector3 | null
+  targetPosition: THREE.Vector3 | null
   onMoveComplete: () => void
 }
 
@@ -74,12 +179,17 @@ function Character({
   targetPosition,
   onMoveComplete,
 }: CharacterProps) {
-  useGLTF.preload(catModel)
   const { scene, animations } = useGLTF(catModel)
   const { actions } = useAnimations(animations, scene)
-  const characterRef = useRef<any>(null)
-  const currentPos = useRef(new Vector3(...position))
-  const startPos = useRef(new Vector3(...position))
+  const characterRef = useRef<THREE.Group>(null)
+  // Adjust the cat’s y-position so it sits properly on the ground.
+  const adjustedPosition = [position[0], position[1] - 0.2, position[2]] as [
+    number,
+    number,
+    number,
+  ]
+  const currentPos = useRef(new THREE.Vector3(...adjustedPosition))
+  const startPos = useRef(new THREE.Vector3(...adjustedPosition))
   const currentRotation = useRef(rotation)
   const animationTime = useRef(0)
   const isMoving = useRef(false)
@@ -103,10 +213,9 @@ function Character({
     }
   }, [targetPosition, actions])
 
-  useFrame((state, delta) => {
+  useFrame((_, delta) => {
     if (!characterRef.current) return
 
-    // Handle movement
     if (targetPosition && isMoving.current) {
       animationTime.current += delta
       const progress = Math.min(animationTime.current / ANIMATION_DURATION, 1)
@@ -128,8 +237,7 @@ function Character({
       }
     }
 
-    // Handle rotation
-    if (characterRef.current && characterRef.current.rotation) {
+    if (characterRef.current) {
       const targetRot = rotation - Math.PI / 2 + Math.PI
       const rotDelta = getShortestRotation(currentRotation.current, targetRot)
       currentRotation.current += rotDelta * delta * ROTATION_LERP_FACTOR
@@ -141,7 +249,7 @@ function Character({
     <primitive
       ref={characterRef}
       object={scene}
-      position={position}
+      position={adjustedPosition}
       scale={[CHARACTER_SCALE, CHARACTER_SCALE, CHARACTER_SCALE]}
       rotation={[0, Math.PI, 0]}
     />
@@ -151,25 +259,20 @@ function Character({
 // ==================================================
 // Game Component
 // ==================================================
-interface GridPosition {
-  i: number
-  j: number
-}
-
 const Game: React.FC = () => {
   const [worldData, setWorldData] = useState<number[][]>([])
   const [loading, setLoading] = useState<boolean>(true)
   const [error, setError] = useState<string | null>(null)
-
   const [characterPos, setCharacterPos] = useState<GridPosition>({ i: 0, j: 0 })
   const [characterDir, setCharacterDir] = useState<number>(1)
   const [initialized, setInitialized] = useState<boolean>(false)
-  const [targetPosition, setTargetPosition] = useState<Vector3 | null>(null)
+  const [targetPosition, setTargetPosition] = useState<THREE.Vector3 | null>(
+    null
+  )
   const [isMoving, setIsMoving] = useState<boolean>(false)
 
   useEffect(() => {
     if (!initialized) {
-      // Assuming level1 is of type number[][]
       const data: number[][] = level1
       for (let i = 0; i < data.length; i++) {
         for (let j = 0; j < data[i].length; j++) {
@@ -185,24 +288,29 @@ const Game: React.FC = () => {
     }
   }, [initialized])
 
+  // Create hexagon tiles so they exactly touch one another.
   const hexagons = useMemo(() => {
     const cells: JSX.Element[] = []
     for (let i = 0; i < worldData.length; i++) {
       for (let j = 0; j < worldData[i].length; j++) {
         if (worldData[i][j] === 1) {
+          // For a flat layout, offset x on odd rows.
           const x = j * GRID_SPACING + (i % 2 === 1 ? GRID_SPACING / 2 : 0)
-          const z = i * GRID_SPACING * 0.75
-          cells.push(
-            <mesh key={`${i}-${j}`} position={[x, 0, z]}>
-              <cylinderGeometry args={[CELL_SIZE, CELL_SIZE, CELL_HEIGHT, 6]} />
-              <meshStandardMaterial color="#607D8B" />
-            </mesh>
-          )
+          // Vertical spacing is 0.75*GRID_SPACING.
+          const z = i * (GRID_SPACING * 0.75)
+          cells.push(<Hexagon key={`${i}-${j}`} position={[x, 0, z]} />)
         }
       }
     }
     return cells
   }, [worldData])
+
+  // Place the cat exactly on the ground.
+  const getPositionFromGrid = (i: number, j: number): THREE.Vector3 => {
+    const x = j * GRID_SPACING + (i % 2 === 1 ? GRID_SPACING / 2 : 0)
+    const z = i * (GRID_SPACING * 0.75)
+    return new THREE.Vector3(x, 0, z)
+  }
 
   const turnLeft = () => {
     if (!isMoving) {
@@ -214,11 +322,6 @@ const Game: React.FC = () => {
     if (!isMoving) {
       setCharacterDir((prev) => (prev + 5) % 6)
     }
-  }
-
-  const getPositionFromGrid = (i: number, j: number): Vector3 => {
-    const x = j * GRID_SPACING + (i % 2 === 1 ? GRID_SPACING / 2 : 0)
-    return new Vector3(x, 0.05, i * GRID_SPACING * 0.75)
   }
 
   const moveForward = () => {
@@ -256,11 +359,10 @@ const Game: React.FC = () => {
       <Canvas camera={{ position: [-2, 2, 3], fov: 50 }}>
         <ambientLight intensity={0.5} />
         <pointLight position={[10, 10, 10]} />
-        {hexagons}
         <Suspense fallback={null}>
+          {hexagons}
           <Character
             position={
-              // Convert the Vector3 to a tuple [number, number, number]
               getPositionFromGrid(characterPos.i, characterPos.j).toArray() as [
                 number,
                 number,
