@@ -3,9 +3,12 @@
 import React from 'react'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import './App.css'
-import Game from './pages/Game'
+import Game from './pages/GameLayout'
+import level1 from './assets/world/level1.json'
 
 function App() {
+  const initialPosition = { i: 0, j: 0 } // Get from level data
+
   return (
     <BrowserRouter>
       <Routes>
@@ -17,7 +20,12 @@ function App() {
             </h1>
           }
         />
-        <Route path="/game" element={<Game />} />
+        <Route
+          path="/game"
+          element={
+            <Game worldData={level1} initialPosition={initialPosition} />
+          }
+        />
       </Routes>
     </BrowserRouter>
   )
