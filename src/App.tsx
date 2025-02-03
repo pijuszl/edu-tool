@@ -1,9 +1,7 @@
-// src/App.tsx
-
 import React from 'react'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import './App.css'
-import Game from './pages/Game'
+import GamePage from './pages/GamePage'
 
 function App() {
   return (
@@ -17,7 +15,7 @@ function App() {
             </h1>
           }
         />
-        <Route path="/game" element={<Game />} />
+        <Route path="/game" element={<GamePage />} />
       </Routes>
     </BrowserRouter>
   )

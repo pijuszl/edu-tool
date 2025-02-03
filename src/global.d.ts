@@ -1,5 +1,3 @@
-// src/global.d.ts
-
 declare module '*.gltf' {
   const url: string
   export default url
