@@ -1,3 +1,4 @@
+// src/components/Character.tsx
 import React, { useEffect, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { useGLTF, useAnimations } from '@react-three/drei'
@@ -34,7 +35,7 @@ export const Character: React.FC<CharacterProps> = ({
   const { actions } = useAnimations(animations, scene)
   const characterRef = useRef<THREE.Group>(null)
 
-  // Adjust the cat’s position
+  // Use the provided position as the starting (and fixed) cat position.
   const adjustedPosition = [position[0], position[1], position[2]] as [
     number,
     number,
@@ -73,11 +74,12 @@ export const Character: React.FC<CharacterProps> = ({
       const progress = Math.min(animationTime.current / ANIMATION_DURATION, 1)
       const easedProgress = easeInOutQuad(progress)
 
-      currentPos.current.lerpVectors(
-        startPos.current,
-        targetPosition,
-        easedProgress
-      )
+      // Lerp only the x and z coordinates; lock y to the start value.
+      const newPos = startPos.current
+        .clone()
+        .lerp(targetPosition, easedProgress)
+      newPos.y = startPos.current.y
+      currentPos.current.copy(newPos)
       characterRef.current.position.copy(currentPos.current)
 
       if (progress >= 1) {

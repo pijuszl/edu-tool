@@ -1,3 +1,4 @@
+// src/components/Hexagon.tsx
 import React, {
   useMemo,
   useCallback,
@@ -15,9 +16,10 @@ import sceneModel from '/src/assets/scene/scene.gltf'
 interface HexagonProps {
   position: [number, number, number]
   scale: number
+  layer: number // the layer index
 }
 
-export const Hexagon: React.FC<HexagonProps> = ({ position, scale }) => {
+export const Hexagon: React.FC<HexagonProps> = ({ position, scale, layer }) => {
   const { nodes } = useGLTF(sceneModel) as unknown as GLTF & {
     nodes: Record<string, THREE.Mesh>
   }
@@ -33,12 +35,20 @@ export const Hexagon: React.FC<HexagonProps> = ({ position, scale }) => {
     [seed]
   )
 
-  // Generate tree decorations.
+  // Compute tile offset from geometry so the bottom aligns at y = 0.
+  let tileOffset = 0
+  if (nodes.Object_186?.geometry) {
+    const mesh = new THREE.Mesh(nodes.Object_186.geometry)
+    const box = new THREE.Box3().setFromObject(mesh)
+    tileOffset = -box.min.y * scale
+  }
+
+  // Generate tree decorations – add the tile offset so trees appear on top.
   const [decorations, setDecorations] = useState<JSX.Element[]>([])
   useEffect(() => {
     if (!nodes.Object_12?.geometry) return
 
-    const numDecorations = Math.floor(rand(0) * 4) // 0–3 trees per hexagon
+    const numDecorations = Math.floor(rand(0) * 4)
     const radius = 0.4
     const angleStep = (Math.PI * 2) / 6
     const availableCorners = [0, 1, 2, 3, 4, 5]
@@ -51,7 +61,7 @@ export const Hexagon: React.FC<HexagonProps> = ({ position, scale }) => {
 
       const pos: [number, number, number] = [
         position[0] + Math.cos(angle) * radius,
-        position[1],
+        position[1] + tileOffset,
         position[2] + Math.sin(angle) * radius,
       ]
 
@@ -61,23 +71,26 @@ export const Hexagon: React.FC<HexagonProps> = ({ position, scale }) => {
           geometry={nodes.Object_12.geometry}
           position={pos}
           rotation={[0, rand(i + 10) * Math.PI * 2, 0]}
-          scale={0.5} // Increase tree size
+          scale={0.5}
         >
           <meshToonMaterial color="#81bd00" />
         </mesh>
       )
     }
     setDecorations(decor)
-  }, [nodes, position, rand])
+  }, [nodes, position, rand, tileOffset])
 
   useLayoutEffect(() => {
-    if (ref.current) {
-      // Center geometry at bottom
+    if (ref.current && ref.current.geometry) {
       ref.current.geometry.computeBoundingBox()
       const box = ref.current.geometry.boundingBox!
-      ref.current.position.y = box.max.y * scale
+      const offsetY = -box.min.y * scale
+      // Shift the mesh so that its bottom aligns with the grid position.
+      ref.current.position.y = position[1] + offsetY
+      // Use renderOrder based on layer so that upper layers are drawn on top.
+      ref.current.renderOrder = layer
     }
-  }, [scale])
+  }, [scale, position, layer])
 
   return (
     <>
@@ -87,7 +100,13 @@ export const Hexagon: React.FC<HexagonProps> = ({ position, scale }) => {
         position={position}
         scale={[scale, scale, scale]}
       >
-        <meshToonMaterial color="#00ff59" side={DoubleSide} />
+        <meshToonMaterial
+          color="#00ff59"
+          side={DoubleSide}
+          polygonOffset
+          polygonOffsetFactor={-1 - layer}
+          polygonOffsetUnits={1}
+        />
       </mesh>
       {decorations}
     </>

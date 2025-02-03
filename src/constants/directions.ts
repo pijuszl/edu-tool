@@ -1,3 +1,5 @@
+// src/constants/directions.ts
+
 import { Direction } from '../types/GameTypes'
 
 export const DIRECTIONS_EVEN: Direction[] = [

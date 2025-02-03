@@ -1,80 +1,106 @@
-import React, { useState, useEffect, useMemo } from 'react'
+// src/pages/GamePage.tsx
+import React, {
+  Suspense,
+  useState,
+  useEffect,
+  useMemo,
+  useCallback,
+} from 'react'
 import { Canvas } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
-import { Suspense } from 'react'
 import * as THREE from 'three'
-import level1 from '/src/assets/world/level1.json'
+import levelData from '/src/assets/world/level1.json'
 import { useHexagonMetrics } from '../hooks/useHexagonMetrics'
 import { Hexagon } from '../components/Hexagon'
 import { Character } from '../components/Character'
 import { GridPosition, HexagonMetrics } from '../types/GameTypes'
 import { DIRECTIONS_EVEN, DIRECTIONS_ODD } from '../constants/directions'
 
+interface WorldData {
+  levels: number[][][]
+}
+
 const GamePage: React.FC = () => {
   const hexMetrics = useHexagonMetrics()
-  const [worldData, setWorldData] = useState<number[][]>([])
+  const [worldData, setWorldData] = useState<WorldData | null>(null)
   const [loading, setLoading] = useState<boolean>(true)
   const [error, setError] = useState<string | null>(null)
-  const [characterPos, setCharacterPos] = useState<GridPosition>({ i: 0, j: 0 })
+  const [characterPos, setCharacterPos] = useState<GridPosition>({
+    i: 0,
+    j: 0,
+    layer: 0,
+  })
   const [characterDir, setCharacterDir] = useState<number>(1)
-  const [initialized, setInitialized] = useState<boolean>(false)
   const [targetPosition, setTargetPosition] = useState<THREE.Vector3 | null>(
     null
   )
   const [isMoving, setIsMoving] = useState<boolean>(false)
 
   useEffect(() => {
-    if (!initialized) {
-      const data: number[][] = level1
-      for (let i = 0; i < data.length; i++) {
-        for (let j = 0; j < data[i].length; j++) {
-          if (data[i][j] === 1) {
-            setCharacterPos({ i, j })
-            setInitialized(true)
+    const data: WorldData = levelData
+    if (data.levels && data.levels.length > 0) {
+      // Choose the first valid cell in layer 0 as the starting position.
+      const level0 = data.levels[0]
+      for (let i = 0; i < level0.length; i++) {
+        for (let j = 0; j < level0[i].length; j++) {
+          if (level0[i][j] === 1) {
+            setCharacterPos({ i, j, layer: 0 })
             setWorldData(data)
             setLoading(false)
             return
           }
         }
       }
+    } else {
+      setError('Invalid world data')
+      setLoading(false)
     }
-  }, [initialized])
+  }, [])
+
+  // Compute grid positions using the metrics.
+  // The grid position represents the tile’s base position.
+  const getPositionFromGrid = useCallback(
+    (
+      i: number,
+      j: number,
+      layer: number,
+      metrics: HexagonMetrics | null
+    ): THREE.Vector3 => {
+      if (!metrics) return new THREE.Vector3()
+      const x =
+        j * metrics.horizontalSpacing +
+        (i % 2 === 1 ? metrics.horizontalSpacing / 2 : 0)
+      const z = i * metrics.verticalSpacing
+      // For layer 0, we want the tile’s bottom to be at y = 0.
+      // Thus, gridY = (layer * tileHeight) - tileOffset.
+      const y = layer * metrics.topSurfaceHeight - metrics.tileOffset
+      return new THREE.Vector3(x, y, z)
+    },
+    []
+  )
 
   const hexagons = useMemo(() => {
-    if (!hexMetrics) return []
+    if (!hexMetrics || !worldData) return []
     const cells: JSX.Element[] = []
-    for (let i = 0; i < worldData.length; i++) {
-      for (let j = 0; j < worldData[i].length; j++) {
-        if (worldData[i][j] === 1) {
-          const x =
-            j * hexMetrics.horizontalSpacing +
-            (i % 2 === 1 ? hexMetrics.horizontalSpacing / 2 : 0)
-          const z = i * hexMetrics.verticalSpacing
-          cells.push(
-            <Hexagon
-              key={`${i}-${j}`}
-              position={[x, 0, z]}
-              scale={hexMetrics.scale}
-            />
-          )
+    worldData.levels.forEach((layerData, layerIndex) => {
+      for (let i = 0; i < layerData.length; i++) {
+        for (let j = 0; j < layerData[i].length; j++) {
+          if (layerData[i][j] === 1) {
+            const pos = getPositionFromGrid(i, j, layerIndex, hexMetrics)
+            cells.push(
+              <Hexagon
+                key={`${layerIndex}-${i}-${j}`}
+                position={[pos.x, pos.y, pos.z]}
+                scale={hexMetrics.scale}
+                layer={layerIndex}
+              />
+            )
+          }
         }
       }
-    }
+    })
     return cells
-  }, [worldData, hexMetrics])
-
-  const getPositionFromGrid = (
-    i: number,
-    j: number,
-    metrics: HexagonMetrics | null
-  ): THREE.Vector3 => {
-    if (!metrics) return new THREE.Vector3()
-    const x =
-      j * metrics.horizontalSpacing +
-      (i % 2 === 1 ? metrics.horizontalSpacing / 2 : 0)
-    const z = i * metrics.verticalSpacing
-    return new THREE.Vector3(x, metrics.topSurfaceHeight, z)
-  }
+  }, [worldData, hexMetrics, getPositionFromGrid])
 
   const turnLeft = () => {
     if (!isMoving) {
@@ -89,8 +115,9 @@ const GamePage: React.FC = () => {
   }
 
   const moveForward = () => {
-    if (isMoving) return
-    const { i, j } = characterPos
+    if (isMoving || !worldData || !hexMetrics) return
+    const { i, j, layer } = characterPos
+    const currentLayerData = worldData.levels[layer]
     const directions = i % 2 === 0 ? DIRECTIONS_EVEN : DIRECTIONS_ODD
     const delta = directions[characterDir]
     const newI = i + delta.di
@@ -98,14 +125,28 @@ const GamePage: React.FC = () => {
 
     if (
       newI >= 0 &&
-      newI < worldData.length &&
+      newI < currentLayerData.length &&
       newJ >= 0 &&
-      newJ < worldData[newI].length &&
-      worldData[newI][newJ] === 1
+      newJ < currentLayerData[newI].length &&
+      currentLayerData[newI][newJ] === 1
     ) {
+      // Block movement if an upper block exists directly above.
+      if (layer + 1 < worldData.levels.length) {
+        const upperLayerData = worldData.levels[layer + 1]
+        if (
+          newI < upperLayerData.length &&
+          newJ < upperLayerData[newI].length &&
+          upperLayerData[newI][newJ] === 1
+        ) {
+          return
+        }
+      }
       setIsMoving(true)
-      setTargetPosition(getPositionFromGrid(newI, newJ, hexMetrics))
-      setCharacterPos({ i: newI, j: newJ })
+      // Compute target tile's base position and then add the cat offset.
+      const newTilePos = getPositionFromGrid(newI, newJ, layer, hexMetrics)
+      newTilePos.y += hexMetrics.topSurfaceHeight // Cat should remain on top
+      setTargetPosition(newTilePos)
+      setCharacterPos({ i: newI, j: newJ, layer })
     }
   }
 
@@ -117,6 +158,19 @@ const GamePage: React.FC = () => {
   if (loading) return <div>Loading world...</div>
   if (error) return <div>Error: {error}</div>
 
+  // Compute the cat’s starting position by taking the grid position and adding the cat offset.
+  const catPos = hexMetrics
+    ? getPositionFromGrid(
+        characterPos.i,
+        characterPos.j,
+        characterPos.layer,
+        hexMetrics
+      )
+    : new THREE.Vector3()
+  if (hexMetrics) {
+    catPos.y += hexMetrics.topSurfaceHeight // Raise the cat so it sits on top
+  }
+
   return (
     <div className="h-screen w-screen">
       <Canvas camera={{ position: [-2, 2, 3], fov: 50 }}>
@@ -126,13 +180,7 @@ const GamePage: React.FC = () => {
           {hexagons}
           {hexMetrics && (
             <Character
-              position={
-                getPositionFromGrid(
-                  characterPos.i,
-                  characterPos.j,
-                  hexMetrics
-                ).toArray() as [number, number, number]
-              }
+              position={catPos.toArray() as [number, number, number]}
               rotation={(characterDir * Math.PI) / 3}
               targetPosition={targetPosition}
               onMoveComplete={handleMoveComplete}
@@ -141,7 +189,7 @@ const GamePage: React.FC = () => {
         </Suspense>
         <OrbitControls enablePan={true} enableZoom={true} enableRotate={true} />
       </Canvas>
-      <div className="absolute left-1/2 top-5 flex -translate-x-1/2 transform gap-2">
+      <div className="absolute left-1/2 top-5 z-50 flex -translate-x-1/2 transform gap-2">
         <button
           className="rounded bg-blue-500 px-4 py-2 text-white disabled:bg-gray-400"
           onClick={turnLeft}

@@ -1,3 +1,4 @@
+// src/hooks/useHexagonMetrics.ts
 import { useState, useEffect } from 'react'
 import { useGLTF } from '@react-three/drei'
 import * as THREE from 'three'
@@ -20,6 +21,8 @@ export const useHexagonMetrics = (): HexagonMetrics | null => {
       const height = box.max.y - box.min.y
       const desiredWidth = 1.0
       const scale = desiredWidth / width
+      const tileHeight = height * scale // the tile’s height after scaling
+      const tileOffset = -box.min.y * scale // shift needed so that the geometry’s bottom is at y = 0
 
       setMetrics({
         width,
@@ -27,7 +30,8 @@ export const useHexagonMetrics = (): HexagonMetrics | null => {
         scale,
         horizontalSpacing: desiredWidth,
         verticalSpacing: (desiredWidth * Math.sqrt(3)) / 2,
-        topSurfaceHeight: box.max.y * scale,
+        topSurfaceHeight: tileHeight,
+        tileOffset: tileOffset,
       })
     }
   }, [nodes])
