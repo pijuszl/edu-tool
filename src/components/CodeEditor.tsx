@@ -5,7 +5,7 @@ import {
   RotateRight as RotateRightIcon,
   ArrowUpward as ArrowUpwardIcon,
 } from '@mui/icons-material'
-import { useGameActions, useGameProcessing } from '../store/gameStore'
+import { useGameActions, useGameProcessing } from '../store/game-store'
 
 type CodeEditorProps = {
   width: number

@@ -1,9 +1,10 @@
-import React, {
+import {
   Suspense,
   useState,
   useEffect,
   useMemo,
   useCallback,
+  useRef,
 } from 'react'
 import { OrbitControls } from '@react-three/drei'
 import { Canvas } from '@react-three/fiber'
@@ -14,6 +15,11 @@ import { Hexagon } from './Hexagon'
 import { Character } from './Character'
 import { GridPosition, HexagonMetrics } from '../../types/game-types'
 import { DIRECTIONS_EVEN, DIRECTIONS_ODD } from '../../config/game-config'
+import {
+  useGameActions,
+  useGameCommands,
+  useGameProcessing,
+} from '../../store/game-store'
 
 type WorldData = {
   levels: number[][][]
@@ -34,6 +40,12 @@ const Game = () => {
     null
   )
   const [isMoving, setIsMoving] = useState<boolean>(false)
+
+  const commands = useGameCommands()
+  const isProcessing = useGameProcessing()
+  const { setProcessing, clearCommands } = useGameActions()
+
+  const moveResolveRef = useRef<(() => void) | null>(null)
 
   useEffect(() => {
     const data: WorldData = levelData
@@ -101,20 +113,21 @@ const Game = () => {
     return cells
   }, [worldData, hexMetrics, getPositionFromGrid])
 
-  const turnLeft = () => {
+  const turnLeft = useCallback(() => {
     if (!isMoving) {
       setCharacterDir((prev) => (prev + 1) % 6)
     }
-  }
+  }, [isMoving])
 
-  const turnRight = () => {
+  const turnRight = useCallback(() => {
     if (!isMoving) {
       setCharacterDir((prev) => (prev + 5) % 6)
     }
-  }
+  }, [isMoving])
 
-  const moveForward = () => {
+  const moveForward = useCallback(async () => {
     if (isMoving || !worldData || !hexMetrics) return
+
     const { i, j, layer } = characterPos
     const currentLayerData = worldData.levels[layer]
     const directions = i % 2 === 0 ? DIRECTIONS_EVEN : DIRECTIONS_ODD
@@ -147,12 +160,64 @@ const Game = () => {
       setTargetPosition(newTilePos)
       setCharacterPos({ i: newI, j: newJ, layer })
     }
-  }
+
+    return new Promise<void>((resolve) => {
+      moveResolveRef.current = resolve
+    })
+  }, [
+    isMoving,
+    worldData,
+    hexMetrics,
+    characterPos,
+    characterDir,
+    getPositionFromGrid,
+    setCharacterPos,
+  ])
 
   const handleMoveComplete = () => {
     setIsMoving(false)
     setTargetPosition(null)
+
+    if (moveResolveRef.current) {
+      moveResolveRef.current()
+      moveResolveRef.current = null
+    }
   }
+
+  useEffect(() => {
+    const processCommands = async () => {
+      if (commands.length > 0 && !isProcessing) {
+        setProcessing(true)
+        for (const command of commands) {
+          switch (command) {
+            case 'forward':
+              await moveForward()
+              break
+            case 'left':
+              turnLeft()
+              await new Promise((resolve) => setTimeout(resolve, 500)) // Turn animation delay
+              break
+            case 'right':
+              turnRight()
+              await new Promise((resolve) => setTimeout(resolve, 500))
+              break
+          }
+        }
+      }
+
+      clearCommands()
+      setProcessing(false)
+    }
+    processCommands()
+  }, [
+    commands,
+    isProcessing,
+    setProcessing,
+    clearCommands,
+    moveForward,
+    turnLeft,
+    turnRight,
+  ])
 
   if (loading) return <div>Loading world...</div>
   if (error) return <div>Error: {error}</div>
