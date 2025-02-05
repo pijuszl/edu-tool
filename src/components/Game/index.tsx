@@ -6,7 +6,7 @@ import {
   useCallback,
   useRef,
 } from 'react'
-import { OrbitControls } from '@react-three/drei'
+import { MapControls } from '@react-three/drei'
 import { Canvas } from '@react-three/fiber'
 import * as THREE from 'three'
 import levelData from '/src/assets/world/level1.json'
@@ -250,7 +250,7 @@ const Game = () => {
           />
         )}
       </Suspense>
-      <OrbitControls enablePan={true} enableZoom={true} enableRotate={true} />
+      <MapControls />
     </Canvas>
   )
 }
