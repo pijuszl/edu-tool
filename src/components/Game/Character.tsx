@@ -3,14 +3,16 @@ import { useFrame } from '@react-three/fiber'
 import { useGLTF, useAnimations } from '@react-three/drei'
 import * as THREE from 'three'
 import type { GLTF } from 'three/examples/jsm/loaders/GLTFLoader'
-import { easeInOutQuad } from '/src/utils/easing'
-import { getShortestRotation } from '../utils/rotations'
+import {
+  easeInOutQuad,
+  getShortestRotation,
+} from '../../utils/movement-animation'
 import {
   CHARACTER_SCALE,
   ANIMATION_DURATION,
   ANIMATION_TIMESCALE,
   ROTATION_LERP_FACTOR,
-} from '/src/config/game-config'
+} from '../../config/game-config'
 
 interface CharacterProps {
   position: [number, number, number]

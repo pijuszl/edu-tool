@@ -12,8 +12,8 @@ import levelData from '/src/assets/world/level1.json'
 import { useHexagonMetrics } from '../../hooks/useHexagonMetrics'
 import { Hexagon } from './Hexagon'
 import { Character } from './Character'
-import { GridPosition, HexagonMetrics } from 'src/types/GameTypes'
-import { DIRECTIONS_EVEN, DIRECTIONS_ODD } from 'src/constants/directions'
+import { GridPosition, HexagonMetrics } from '../../types/game-types'
+import { DIRECTIONS_EVEN, DIRECTIONS_ODD } from '../../config/game-config'
 
 type WorldData = {
   levels: number[][][]
