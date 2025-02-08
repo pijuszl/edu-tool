@@ -48,20 +48,20 @@ const Game = ({ levels }: LevelData) => {
 
   const getPositionFromGrid = useCallback(
     (
-      i: number,
-      j: number,
+      x: number,
+      y: number,
       layer: number,
       metrics: HexagonMetrics | null
     ): THREE.Vector3 => {
       if (!metrics) return new THREE.Vector3()
-      const x =
-        j * metrics.horizontalSpacing +
-        (i % 2 === 1 ? metrics.horizontalSpacing / 2 : 0)
-      const z = i * metrics.verticalSpacing
+      const nx =
+        x * metrics.horizontalSpacing +
+        (y % 2 === 1 ? metrics.horizontalSpacing / 2 : 0)
+      const nz = y * metrics.verticalSpacing
       // For layer 0, we want the tile’s bottom to be at y = 0.
       // Thus, gridY = (layer * tileHeight) - tileOffset.
-      const y = layer * metrics.topSurfaceHeight - metrics.tileOffset
-      return new THREE.Vector3(x, y, z)
+      const ny = layer * metrics.topSurfaceHeight - metrics.tileOffset
+      return new THREE.Vector3(nx, ny, nz)
     },
     []
   )
@@ -70,18 +70,19 @@ const Game = ({ levels }: LevelData) => {
     if (!hexMetrics || !worldData) return []
     const cells: React.ReactElement[] = []
     worldData.layers.forEach((layerData, layerIndex) => {
-      for (let i = 0; i < layerData.length; i++) {
-        for (let j = 0; j < layerData[i].length; j++) {
-          if (layerData[i][j] === 1) {
-            const pos = getPositionFromGrid(i, j, layerIndex, hexMetrics)
+      for (let y = 0; y < layerData.length; y++) {
+        for (let x = 0; x < layerData[y].length; x++) {
+          if (layerData[y][x] === 1) {
+            const pos = getPositionFromGrid(x, y, layerIndex, hexMetrics)
             cells.push(
               <Hexagon
-                key={`${layerIndex}-${i}-${j}`}
+                key={`${layerIndex}-${y}-${x}`}
                 position={[pos.x, pos.y, pos.z]}
                 scale={hexMetrics.scale}
                 layer={layerIndex}
               />
             )
+          } else if (layerData[y][x] === 2) {
           }
         }
       }
@@ -109,61 +110,63 @@ const Game = ({ levels }: LevelData) => {
 
   const moveForward = useCallback(async () => {
     if (!isMoving && hexMetrics) {
-      const { x, y, layer } = characterPos
-      const currentLayerData = worldData.layers[layer]
-      const directions = y % 2 === 0 ? DIRECTIONS_EVEN : DIRECTIONS_ODD
-      const delta = directions[characterPos.direction ?? 0]
-      const newX = x + delta.dx
-      const newY = y + delta.dy
+      setIsMoving(true)
 
-      if (
-        newY >= 0 &&
-        newY < currentLayerData.length &&
-        newX >= 0 &&
-        newX < currentLayerData[newY].length &&
-        currentLayerData[newY][newX] === 1
-      ) {
-        // Block movement if an upper block exists directly above.
-        if (layer + 1 < worldData.layers.length) {
-          const upperLayerData = worldData.layers[layer + 1]
-          if (
-            newY < upperLayerData.length &&
-            newX < upperLayerData[newY].length &&
-            upperLayerData[newY][newX] === 1
-          ) {
-            return
+      setCharacterPos((prev) => {
+        const { x, y, layer, direction } = prev // Get the latest position
+        const directions = y % 2 === 0 ? DIRECTIONS_EVEN : DIRECTIONS_ODD
+        const delta = directions[direction ?? 0]
+
+        const newX = x + delta.dx
+        const newY = y + delta.dy
+
+        const currentLayerData = worldData.layers[layer]
+
+        if (
+          newY >= 0 &&
+          newY < currentLayerData.length &&
+          newX >= 0 &&
+          newX < currentLayerData[newY].length &&
+          currentLayerData[newY][newX] === 1
+        ) {
+          // Block movement if an upper block exists directly above.
+          if (layer + 1 < worldData.layers.length) {
+            const upperLayerData = worldData.layers[layer + 1]
+            if (
+              newY < upperLayerData.length &&
+              newX < upperLayerData[newY].length &&
+              upperLayerData[newY][newX] === 1
+            ) {
+              setIsMoving(false)
+              return prev // No movement
+            }
           }
+
+          console.log(`Moving from (${x}, ${y})`)
+          console.log(`Moving to (${newX}, ${newY})`)
+
+          const newTilePos = getPositionFromGrid(newX, newY, layer, hexMetrics)
+          newTilePos.y += hexMetrics.topSurfaceHeight
+
+          setTargetPosition(newTilePos)
+
+          return { ...prev, x: newX, y: newY, layer }
         }
-        setIsMoving(true)
-        // Compute target tile's base position and then add the cat offset.
-        const newTilePos = getPositionFromGrid(newY, newX, layer, hexMetrics)
 
-        newTilePos.y += hexMetrics.topSurfaceHeight // Cat should remain on top
+        setIsMoving(false)
+        return prev // No movement
+      })
 
-        setCharacterPos((prev) => ({
-          ...prev,
-          x: newX,
-          y: newY,
-          layer,
-        }))
+      // Wait for React to update the state before proceeding
+      await new Promise((resolve) => setTimeout(resolve, 50))
 
-        await new Promise((resolve) => setTimeout(resolve, 50))
-
-        setTargetPosition(newTilePos)
-      }
+      setIsMoving(false)
 
       return new Promise<void>((resolve) => {
         moveResolveRef.current = resolve
       })
     }
-  }, [
-    isMoving,
-    levels,
-    worldData,
-    hexMetrics,
-    getPositionFromGrid,
-    characterPos,
-  ])
+  }, [isMoving, worldData, hexMetrics, getPositionFromGrid])
 
   const handleMoveComplete = () => {
     setIsMoving(false)
