@@ -1,11 +1,18 @@
 import { Editor } from '@monaco-editor/react'
-import { Box, IconButton, Paper, Typography } from '@mui/material'
+import { Button, Box, IconButton, Paper, Typography } from '@mui/material'
 import {
   RotateLeft as RotateLeftIcon,
   RotateRight as RotateRightIcon,
   ArrowUpward as ArrowUpwardIcon,
 } from '@mui/icons-material'
-import { useGameActions, useGameProcessing } from '../store/game-store'
+import {
+  useGameCommands,
+  useAddCommand,
+  useClearCommands,
+  useSetRunning,
+  useGameRunning,
+} from '../store/game-store'
+import { useEffect } from 'react'
 
 type CodeEditorProps = {
   width: number
@@ -13,8 +20,16 @@ type CodeEditorProps = {
 }
 
 const CodeEditor = ({ width, isDragging }: CodeEditorProps) => {
-  const { addCommand } = useGameActions()
-  const isProcessing = useGameProcessing()
+  const isRunning = useGameRunning()
+
+  const commands = useGameCommands()
+  const addCommand = useAddCommand()
+  const clearCommands = useClearCommands()
+  const setRunning = useSetRunning()
+
+  useEffect(() => {
+    console.log('added: ', commands)
+  }, [commands])
 
   return (
     <Paper
@@ -45,7 +60,7 @@ const CodeEditor = ({ width, isDragging }: CodeEditorProps) => {
           <IconButton
             aria-label="turn left"
             onClick={() => addCommand('left')}
-            disabled={isProcessing}
+            disabled={isRunning}
             color="primary"
             size="large"
           >
@@ -55,7 +70,7 @@ const CodeEditor = ({ width, isDragging }: CodeEditorProps) => {
           <IconButton
             aria-label="move forward"
             onClick={() => addCommand('forward')}
-            disabled={isProcessing}
+            disabled={isRunning}
             color="primary"
             size="large"
           >
@@ -65,12 +80,28 @@ const CodeEditor = ({ width, isDragging }: CodeEditorProps) => {
           <IconButton
             aria-label="turn left"
             onClick={() => addCommand('right')}
-            disabled={isProcessing}
+            disabled={isRunning}
             color="primary"
             size="large"
           >
             <RotateRightIcon fontSize="inherit" />
           </IconButton>
+
+          <Button
+            variant="outlined"
+            size="large"
+            onClick={() => clearCommands()}
+          >
+            Clear Code
+          </Button>
+
+          <Button
+            variant="contained"
+            size="large"
+            onClick={() => setRunning(!isRunning)}
+          >
+            {!isRunning ? 'Run Code' : 'Stop Code'}
+          </Button>
         </Box>
       </Box>
     </Paper>

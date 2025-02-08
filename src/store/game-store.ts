@@ -2,28 +2,30 @@ import { create } from 'zustand'
 
 type Command = 'forward' | 'left' | 'right'
 
-interface GameState {
+type State = {
   commands: Command[]
-  isProcessing: boolean
-  actions: {
-    addCommand: (command: Command) => void
-    clearCommands: () => void
-    setProcessing: (isProcessing: boolean) => void
-  }
+  isRunning: boolean
+}
+type Actions = {
+  addCommand: (command: Command) => void
+  clearCommands: () => void
+  setRunning: (isProcessing: boolean) => void
 }
 
-const useGameStore = create<GameState>((set) => ({
+const useGameStore = create<State & Actions>((set) => ({
   commands: [],
-  isProcessing: false,
-  actions: {
-    addCommand: (command) => set((state) => ({
-      commands: [...state.commands, command]
+  isRunning: false,
+  addCommand: (command: Command) =>
+    set((state) => ({
+      commands: [...state.commands, command],
     })),
-    clearCommands: () => set({ commands: [] }),
-    setProcessing: (isProcessing) => set({ isProcessing })
-  }
+  clearCommands: () => set(() => ({ commands: [] })),
+  setRunning: (isRunning: boolean) => set(() => ({ isRunning: isRunning })),
 }))
 
-export const useGameActions = () => useGameStore((state) => state.actions)
+export const useGameRunning = () => useGameStore((state) => state.isRunning)
 export const useGameCommands = () => useGameStore((state) => state.commands)
-export const useGameProcessing = () => useGameStore((state) => state.isProcessing)
+export const useAddCommand = () => useGameStore((state) => state.addCommand)
+export const useClearCommands = () =>
+  useGameStore((state) => state.clearCommands)
+export const useSetRunning = () => useGameStore((state) => state.setRunning)
