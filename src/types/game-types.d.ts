@@ -27,12 +27,16 @@ export type LevelData = {
   levels: WorldData[]
 }
 
-export interface HexagonMetrics {
-  width: number
+export type HexagonMetrics = {
+  width: number //D in hexagon
   height: number
-  scale: number
   horizontalSpacing: number
   verticalSpacing: number
-  topSurfaceHeight: number // The tile’s full height (after scaling)
-  tileOffset: number // Amount to shift geometry vertically so its bottom is at y = 0
+}
+
+export type GamePosition = {
+  x: number
+  y: number
+  z: number
+  layer: number
 }

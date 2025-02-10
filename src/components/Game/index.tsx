@@ -6,28 +6,25 @@ import {
   useCallback,
   useRef,
 } from 'react'
+import { getPositionFromGrid } from '../../utils/position-converter'
 import { MapControls } from '@react-three/drei'
 import { Canvas } from '@react-three/fiber'
 import * as THREE from 'three'
-import { useHexagonMetrics } from '../../hooks/useHexagonMetrics'
 import { Hexagon } from './Hexagon'
 import { Character } from './Character'
+import { LevelData, WorldData, GridPosition } from '../../types/game-types'
 import {
-  LevelData,
-  WorldData,
-  GridPosition,
-  HexagonMetrics,
-} from '../../types/game-types'
-import { DIRECTIONS_EVEN, DIRECTIONS_ODD } from '../../config/game-config'
+  DIRECTIONS_EVEN,
+  DIRECTIONS_ODD,
+  HEX_METRICS,
+} from '../../config/game-config'
 import {
   useGameCommands,
   useGameRunning,
-  useClearCommands,
   useSetRunning,
 } from '../../store/game-store'
 
 const Game = ({ levels }: LevelData) => {
-  const hexMetrics = useHexagonMetrics()
   const [currentLevel, setCurrentLevel] = useState<number>(0)
   const worldData: WorldData = levels[currentLevel]
 
@@ -40,45 +37,25 @@ const Game = ({ levels }: LevelData) => {
   const [isMoving, setIsMoving] = useState<boolean>(false)
 
   const commands = useGameCommands()
-  const clearCommands = useClearCommands()
   const isRunning = useGameRunning()
   const setRunning = useSetRunning()
 
   const moveResolveRef = useRef<(() => void) | null>(null)
 
-  const getPositionFromGrid = useCallback(
-    (
-      x: number,
-      y: number,
-      layer: number,
-      metrics: HexagonMetrics | null
-    ): THREE.Vector3 => {
-      if (!metrics) return new THREE.Vector3()
-      const nx =
-        x * metrics.horizontalSpacing +
-        (y % 2 === 1 ? metrics.horizontalSpacing / 2 : 0)
-      const nz = y * metrics.verticalSpacing
-      // For layer 0, we want the tile’s bottom to be at y = 0.
-      // Thus, gridY = (layer * tileHeight) - tileOffset.
-      const ny = layer * metrics.topSurfaceHeight - metrics.tileOffset
-      return new THREE.Vector3(nx, ny, nz)
-    },
-    []
-  )
+  const convertPosition = useCallback(getPositionFromGrid, [])
 
   const hexagons = useMemo(() => {
-    if (!hexMetrics || !worldData) return []
+    if (!worldData) return []
     const cells: React.ReactElement[] = []
     worldData.layers.forEach((layerData, layerIndex) => {
       for (let y = 0; y < layerData.length; y++) {
         for (let x = 0; x < layerData[y].length; x++) {
           if (layerData[y][x] === 1) {
-            const pos = getPositionFromGrid(x, y, layerIndex, hexMetrics)
+            const pos = convertPosition(x, y, layerIndex)
             cells.push(
               <Hexagon
-                key={`${layerIndex}-${y}-${x}`}
+                key={`${layerIndex}-${x}-${y}`}
                 position={[pos.x, pos.y, pos.z]}
-                scale={hexMetrics.scale}
                 layer={layerIndex}
               />
             )
@@ -88,7 +65,7 @@ const Game = ({ levels }: LevelData) => {
       }
     })
     return cells
-  }, [levels, hexMetrics, getPositionFromGrid])
+  }, [levels])
 
   const turnLeft = useCallback(() => {
     if (!isMoving) {
@@ -109,7 +86,7 @@ const Game = ({ levels }: LevelData) => {
   }, [isMoving])
 
   const moveForward = useCallback(async () => {
-    if (!isMoving && hexMetrics) {
+    if (!isMoving) {
       setIsMoving(true)
 
       setCharacterPos((prev) => {
@@ -145,8 +122,8 @@ const Game = ({ levels }: LevelData) => {
           console.log(`Moving from (${x}, ${y})`)
           console.log(`Moving to (${newX}, ${newY})`)
 
-          const newTilePos = getPositionFromGrid(newX, newY, layer, hexMetrics)
-          newTilePos.y += hexMetrics.topSurfaceHeight
+          const newTilePos = convertPosition(newX, newY, layer)
+          newTilePos.y += HEX_METRICS.height
 
           setTargetPosition(newTilePos)
 
@@ -166,7 +143,7 @@ const Game = ({ levels }: LevelData) => {
         moveResolveRef.current = resolve
       })
     }
-  }, [isMoving, worldData, hexMetrics, getPositionFromGrid])
+  }, [isMoving, worldData])
 
   const handleMoveComplete = () => {
     setIsMoving(false)
@@ -214,17 +191,13 @@ const Game = ({ levels }: LevelData) => {
   // if (loading) return <div>Loading world...</div>
 
   // Compute the cat’s starting position by taking the grid position and adding the cat offset.
-  const catPos = hexMetrics
-    ? getPositionFromGrid(
-        characterPos.y,
-        characterPos.x,
-        characterPos.layer,
-        hexMetrics
-      )
-    : new THREE.Vector3()
-  if (hexMetrics) {
-    catPos.y += hexMetrics.topSurfaceHeight // Raise the cat so it sits on top
-  }
+  const catPos = convertPosition(
+    characterPos.y,
+    characterPos.x,
+    characterPos.layer
+  )
+
+  catPos.y += HEX_METRICS.height // Raise the cat so it sits on top
 
   return (
     <Canvas camera={{ position: [-2, 2, 3], fov: 50 }}>
@@ -232,14 +205,13 @@ const Game = ({ levels }: LevelData) => {
       <directionalLight position={[3, 5, 2]} intensity={1.5} castShadow />
       <Suspense fallback={null}>
         {hexagons}
-        {hexMetrics && (
-          <Character
-            position={catPos.toArray() as [number, number, number]}
-            rotation={((characterPos.direction ?? 0) * Math.PI) / 3}
-            targetPosition={targetPosition}
-            onMoveComplete={handleMoveComplete}
-          />
-        )}
+
+        <Character
+          position={catPos.toArray() as [number, number, number]}
+          rotation={((characterPos.direction ?? 0) * Math.PI) / 3}
+          targetPosition={targetPosition}
+          onMoveComplete={handleMoveComplete}
+        />
       </Suspense>
       <MapControls />
     </Canvas>
