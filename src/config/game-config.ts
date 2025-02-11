@@ -5,6 +5,8 @@ export const ROTATION_LERP_FACTOR = 5
 export const ANIMATION_DURATION = 2.0
 export const ANIMATION_TIMESCALE = 0.7
 
+export const STAIRS_SCALE = 0.75
+
 export const DIRECTIONS_EVEN: GridMoves[] = [
   { dx: 1, dy: 0 },
   { dx: 0, dy: -1 },
@@ -23,11 +25,11 @@ export const DIRECTIONS_ODD: GridMoves[] = [
   { dx: 1, dy: 1 },
 ]
 
-const HEX_WIDTH = 1 // R in hexagon
+const HEX_RADIUS = 1 // R in hexagon
 
 export const HEX_METRICS: HexagonMetrics = {
-  width: HEX_WIDTH,
+  radius: HEX_RADIUS,
   height: 0.7,
-  horizontalSpacing: Math.sqrt(3) * HEX_WIDTH,
-  verticalSpacing: HEX_WIDTH + HEX_WIDTH / 2,
+  horizontalSpacing: Math.sqrt(3) * HEX_RADIUS,
+  verticalSpacing: HEX_RADIUS + HEX_RADIUS / 2,
 }

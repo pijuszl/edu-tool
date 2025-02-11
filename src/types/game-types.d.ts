@@ -28,15 +28,13 @@ export type LevelData = {
 }
 
 export type HexagonMetrics = {
-  width: number //D in hexagon
+  radius: number //R in hexagon
   height: number
   horizontalSpacing: number
   verticalSpacing: number
 }
 
 export type GamePosition = {
-  x: number
-  y: number
-  z: number
-  layer: number
+  position: [number, number, number]
+  direction?: number
 }

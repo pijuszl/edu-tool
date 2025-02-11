@@ -11,6 +11,7 @@ import { MapControls } from '@react-three/drei'
 import { Canvas } from '@react-three/fiber'
 import * as THREE from 'three'
 import { Hexagon } from './Hexagon'
+import { Stairs } from './Stairs'
 import { Character } from './Character'
 import { LevelData, WorldData, GridPosition } from '../../types/game-types'
 import {
@@ -44,27 +45,39 @@ const Game = ({ levels }: LevelData) => {
 
   const convertPosition = useCallback(getPositionFromGrid, [])
 
-  const hexagons = useMemo(() => {
+  const objects = useMemo(() => {
     if (!worldData) return []
-    const cells: React.ReactElement[] = []
+    const obj: React.ReactElement[] = []
+
     worldData.layers.forEach((layerData, layerIndex) => {
       for (let y = 0; y < layerData.length; y++) {
         for (let x = 0; x < layerData[y].length; x++) {
-          if (layerData[y][x] === 1) {
-            const pos = convertPosition(x, y, layerIndex)
-            cells.push(
+          const pos = convertPosition(x, y, layerIndex)
+          const value = layerData[y][x]
+
+          if (value === 1) {
+            obj.push(
               <Hexagon
                 key={`${layerIndex}-${x}-${y}`}
                 position={[pos.x, pos.y, pos.z]}
-                layer={layerIndex}
+                // layer={layerIndex}
               />
             )
-          } else if (layerData[y][x] === 2) {
+          } else if (Math.floor(value / 10) === 3) {
+            const direction = value % 10
+            obj.push(
+              <Stairs
+                key={`${layerIndex}-${x}-${y}`}
+                position={[pos.x, pos.y, pos.z]}
+                direction={direction}
+              />
+            )
           }
         }
       }
     })
-    return cells
+
+    return obj
   }, [levels])
 
   const turnLeft = useCallback(() => {
@@ -204,7 +217,7 @@ const Game = ({ levels }: LevelData) => {
       <ambientLight intensity={1} />
       <directionalLight position={[3, 5, 2]} intensity={1.5} castShadow />
       <Suspense fallback={null}>
-        {hexagons}
+        {objects}
 
         <Character
           position={catPos.toArray() as [number, number, number]}

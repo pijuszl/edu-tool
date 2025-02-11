@@ -11,13 +11,9 @@ import * as THREE from 'three'
 import { DoubleSide } from 'three'
 import { Tree } from './Tree'
 import { HEX_METRICS } from '../../config/game-config'
+import { GamePosition } from '../../types/game-types'
 
-interface HexagonProps {
-  position: [number, number, number]
-  layer: number
-}
-
-export const Hexagon = ({ position, layer }: HexagonProps) => {
+export const Hexagon = ({ position }: GamePosition) => {
   const ref = useRef<THREE.Mesh>(null)
 
   const seed = useMemo(
@@ -30,43 +26,40 @@ export const Hexagon = ({ position, layer }: HexagonProps) => {
     [seed]
   )
 
-  // In Hexagon.tsx
   const geometry = useMemo(() => {
     const shape = new THREE.Shape()
     const angle = (2 * Math.PI) / 6
 
     shape.moveTo(
-      HEX_METRICS.width * Math.cos(0),
-      HEX_METRICS.width * Math.sin(0)
+      HEX_METRICS.radius * Math.cos(0),
+      HEX_METRICS.radius * Math.sin(0)
     )
     for (let i = 1; i <= 6; i++) {
       shape.lineTo(
-        HEX_METRICS.width * Math.cos(angle * i),
-        HEX_METRICS.width * Math.sin(angle * i)
+        HEX_METRICS.radius * Math.cos(angle * i),
+        HEX_METRICS.radius * Math.sin(angle * i)
       )
     }
 
-    // Create geometry and rotate it to lie flat
     const geom = new THREE.ExtrudeGeometry(shape, {
       depth: HEX_METRICS.height,
       bevelEnabled: false,
     })
 
-    // Rotate geometry to make it lie flat on XZ plane
     geom.rotateX(-Math.PI / 2)
     geom.rotateY(Math.PI / 2)
 
     return geom
   }, [])
 
-  const [decorations, setDecorations] = useState<JSX.Element[]>([])
+  const [decorations, setDecorations] = useState<React.ReactElement[]>([])
 
   useEffect(() => {
     const numDecorations = Math.floor(rand(0) * 4)
-    const radius = HEX_METRICS.width * 0.5
+    const radius = HEX_METRICS.radius * 0.5
     const angleStep = (Math.PI * 2) / 6
     const availableCorners = [0, 1, 2, 3, 4, 5]
-    const decor: JSX.Element[] = []
+    const decor: React.ReactElement[] = []
 
     for (let i = 0; i < numDecorations; i++) {
       const cornerIdx = Math.floor(rand(i) * availableCorners.length)
@@ -84,29 +77,29 @@ export const Hexagon = ({ position, layer }: HexagonProps) => {
           key={`tree-${position.join(',')}-${i}`}
           position={pos}
           rotation={[0, rand(i + 10) * Math.PI * 2, 0]}
-          scale={0.5}
+          scale={1}
         />
       )
     }
     setDecorations(decor)
   }, [rand, position])
 
-  useLayoutEffect(() => {
-    if (ref.current && ref.current.geometry) {
-      ref.current.geometry.computeBoundingBox()
-      const box = ref.current.geometry.boundingBox!
-      const offsetY = -box.min.y * 1
-      ref.current.position.y = position[1] + offsetY
-      ref.current.renderOrder = layer
-    }
-  }, [position, layer])
+  // useLayoutEffect(() => {
+  //   if (ref.current && ref.current.geometry) {
+  //     ref.current.geometry.computeBoundingBox()
+  //     const box = ref.current.geometry.boundingBox!
+  //     const offsetY = -box.min.y * 1
+  //     ref.current.position.y = position[1] + offsetY
+  //     ref.current.renderOrder = layer
+  //   }
+  // }, [position, layer])
 
   return (
     <>
-      <mesh ref={ref} geometry={geometry} position={position} scale={[1, 1, 1]}>
+      <mesh ref={ref} geometry={geometry} position={position}>
         <meshToonMaterial color="#00ff59" side={DoubleSide} />
       </mesh>
-      {decorations}
+      {/* {decorations} */}
     </>
   )
 }

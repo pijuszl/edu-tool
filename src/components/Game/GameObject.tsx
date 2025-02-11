@@ -43,7 +43,7 @@
 //   }
 
 //   // Generate tree decorations – add the tile offset so trees appear on top.
-//   const [decorations, setDecorations] = useState<JSX.Element[]>([])
+//   const [decorations, setDecorations] = useState<React.ReactElement[]>([])
 //   useEffect(() => {
 //     if (!nodes.Object_12?.geometry) return
 
@@ -51,7 +51,7 @@
 //     const radius = 0.4
 //     const angleStep = (Math.PI * 2) / 6
 //     const availableCorners = [0, 1, 2, 3, 4, 5]
-//     const decor: JSX.Element[] = []
+//     const decor: React.ReactElement[] = []
 
 //     for (let i = 0; i < numDecorations; i++) {
 //       const cornerIdx = Math.floor(rand(i) * availableCorners.length)
