@@ -6,6 +6,7 @@ export const ANIMATION_DURATION = 2.0
 export const ANIMATION_TIMESCALE = 0.7
 
 export const STAIRS_SCALE = 0.75
+export const TREES_SCALE = 0.65
 
 export const DIRECTIONS_EVEN: GridMoves[] = [
   { dx: 1, dy: 0 },

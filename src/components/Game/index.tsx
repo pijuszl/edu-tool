@@ -12,6 +12,7 @@ import { Canvas } from '@react-three/fiber'
 import * as THREE from 'three'
 import { Hexagon } from './Hexagon'
 import { Stairs } from './Stairs'
+import { Trees } from './Trees'
 import { Character } from './Character'
 import { LevelData, WorldData, GridPosition } from '../../types/game-types'
 import {
@@ -61,6 +62,13 @@ const Game = ({ levels }: LevelData) => {
                 key={`${layerIndex}-${x}-${y}`}
                 position={[pos.x, pos.y, pos.z]}
                 // layer={layerIndex}
+              />
+            )
+          } else if (value === 2) {
+            obj.push(
+              <Trees
+                key={`${layerIndex}-${x}-${y}`}
+                position={[pos.x, pos.y, pos.z]}
               />
             )
           } else if (Math.floor(value / 10) === 3) {
@@ -125,7 +133,8 @@ const Game = ({ levels }: LevelData) => {
             if (
               newY < upperLayerData.length &&
               newX < upperLayerData[newY].length &&
-              upperLayerData[newY][newX] === 1
+              (upperLayerData[newY][newX] === 1 ||
+                upperLayerData[newY][newX] === 2)
             ) {
               setIsMoving(false)
               return prev // No movement
