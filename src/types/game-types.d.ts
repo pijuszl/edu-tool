@@ -10,15 +10,8 @@ export type GridMoves = {
   dy: number
 }
 
-export type WorldSize = {
-  width: number
-  length: number
-  height: number
-}
-
 export type WorldData = {
   start: Position
-  worldSize: WorldSize
   layers: number[][][]
   collectables: Position[]
 }

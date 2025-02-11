@@ -61,7 +61,6 @@ const Game = ({ levels }: LevelData) => {
               <Hexagon
                 key={`${layerIndex}-${x}-${y}`}
                 position={[pos.x, pos.y, pos.z]}
-                // layer={layerIndex}
               />
             )
           } else if (value === 2) {
