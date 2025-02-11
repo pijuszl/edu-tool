@@ -7,7 +7,7 @@ import levelData from '../assets/world/world1.json'
 import { i } from 'react-router/dist/development/fog-of-war-CCAcUMgB'
 
 const GameLayout = () => {
-  const [leftWidth, setLeftWidth] = useState(50)
+  const [leftWidth, setLeftWidth] = useState(30)
   const [isDragging, setIsDragging] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
 
