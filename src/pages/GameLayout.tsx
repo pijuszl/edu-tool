@@ -4,7 +4,6 @@ import CodeEditor from '../components/CodeEditor'
 import Game from '../components/Game'
 import PageDivider from '../components/PageDivider'
 import levelData from '../assets/world/world1.json'
-import { i } from 'react-router/dist/development/fog-of-war-CCAcUMgB'
 
 const GameLayout = () => {
   const [leftWidth, setLeftWidth] = useState(30)

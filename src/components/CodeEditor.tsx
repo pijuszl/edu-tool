@@ -21,7 +21,6 @@ type CodeEditorProps = {
 
 const CodeEditor = ({ width, isDragging }: CodeEditorProps) => {
   const isRunning = useGameRunning()
-
   const commands = useGameCommands()
   const addCommand = useAddCommand()
   const clearCommands = useClearCommands()
@@ -43,20 +42,94 @@ const CodeEditor = ({ width, isDragging }: CodeEditorProps) => {
       <Typography variant="h6" gutterBottom>
         Code Editor
       </Typography>
-      <Box sx={{ height: 'calc(100% - 40px)' }}>
-        <Editor
-          height="80%"
-          defaultLanguage="javascript"
-          defaultValue="// Write your code here"
-          theme="vs-dark"
-          options={{
-            minimap: { enabled: false },
-            fontSize: 14,
-            lineNumbers: 'on',
-          }}
-        />
+      <Box
+        sx={{
+          height: 'calc(100% - 40px)',
+          display: 'flex',
+          flexDirection: 'column',
+        }}
+      >
+        {/* Code Editor */}
+        <Box sx={{ flex: '0 0 60%' }}>
+          <Editor
+            height="100%"
+            defaultLanguage="javascript"
+            defaultValue="// Write your code here"
+            theme="vs-dark"
+            options={{
+              minimap: { enabled: false },
+              fontSize: 14,
+              lineNumbers: 'on',
+            }}
+          />
+        </Box>
 
-        <Box sx={{ display: 'flex', gap: 2 }}>
+        <Box
+          sx={{
+            flex: '0 0 20%',
+            overflow: 'auto',
+            p: 1,
+            border: '1px solid',
+            borderColor: 'divider',
+            borderRadius: 1,
+            mt: 1,
+          }}
+        >
+          <Typography variant="subtitle2" gutterBottom>
+            Komandų seka
+          </Typography>
+          {commands.length === 0 ? (
+            <Typography variant="body2" color="textSecondary">
+              Nėra pridėtų komandų. Naudokite žemiau esančius mygtukus, kad
+              pridėtumėte komandas.
+            </Typography>
+          ) : (
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+              {commands.map((command, index) => {
+                let IconComponent
+                switch (command) {
+                  case 'left':
+                    IconComponent = RotateLeftIcon
+                    break
+                  case 'forward':
+                    IconComponent = ArrowUpwardIcon
+                    break
+                  case 'right':
+                    IconComponent = RotateRightIcon
+                    break
+                  default:
+                    return null
+                }
+                return (
+                  <Paper
+                    key={index}
+                    elevation={2}
+                    sx={{
+                      p: 0.5,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                    title={command}
+                  >
+                    <IconComponent fontSize="small" />
+                  </Paper>
+                )
+              })}
+            </Box>
+          )}
+        </Box>
+
+        {/* Control Buttons */}
+        <Box
+          sx={{
+            flex: '0 0 20%',
+            display: 'flex',
+            gap: 2,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
           <IconButton
             aria-label="turn left"
             onClick={() => addCommand('left')}
@@ -78,7 +151,7 @@ const CodeEditor = ({ width, isDragging }: CodeEditorProps) => {
           </IconButton>
 
           <IconButton
-            aria-label="turn left"
+            aria-label="turn right"
             onClick={() => addCommand('right')}
             disabled={isRunning}
             color="primary"
