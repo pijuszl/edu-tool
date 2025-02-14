@@ -18,7 +18,6 @@ interface CharacterProps {
   position: [number, number, number]
   rotation: number
   targetPosition: THREE.Vector3 | null
-  resetKey: number | string
   onMoveComplete: () => void
 }
 
@@ -26,7 +25,6 @@ export const Character = ({
   position,
   rotation,
   targetPosition,
-  resetKey,
   onMoveComplete,
 }: CharacterProps) => {
   const { scene, animations } = useGLTF(
@@ -57,12 +55,6 @@ export const Character = ({
     }
   }, [actions])
 
-  useEffect(() => {
-    currentPos.current.set(...initialPosition)
-    startPos.current.set(...initialPosition)
-    // If you want to reset other things like rotation, do it here too
-  }, [resetKey, initialPosition])
-  
   useEffect(() => {
     if (targetPosition && !isMoving.current) {
       startPos.current.copy(currentPos.current)

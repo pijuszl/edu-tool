@@ -233,7 +233,6 @@ const Game = ({ levels }: LevelData) => {
           position={catPos.toArray() as [number, number, number]}
           rotation={((characterPos.direction ?? 0) * Math.PI) / 3}
           targetPosition={targetPosition}
-          resetKey={resetKey}
           onMoveComplete={handleMoveComplete}
         />
       </Suspense>
