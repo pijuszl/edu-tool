@@ -8,6 +8,7 @@ type State = {
 }
 type Actions = {
   addCommand: (command: Command) => void
+  removeCommand: () => void
   clearCommands: () => void
   setRunning: (isProcessing: boolean) => void
 }
@@ -19,6 +20,10 @@ const useGameStore = create<State & Actions>((set) => ({
     set((state) => ({
       commands: [...state.commands, command],
     })),
+  removeCommand: () =>
+    set((state) => ({
+      commands: state.commands.length > 0 ? state.commands.slice(0, -1) : [],
+    })),
   clearCommands: () => set(() => ({ commands: [] })),
   setRunning: (isRunning: boolean) => set(() => ({ isRunning: isRunning })),
 }))
@@ -26,6 +31,8 @@ const useGameStore = create<State & Actions>((set) => ({
 export const useGameRunning = () => useGameStore((state) => state.isRunning)
 export const useGameCommands = () => useGameStore((state) => state.commands)
 export const useAddCommand = () => useGameStore((state) => state.addCommand)
+export const useRemoveCommand = () =>
+  useGameStore((state) => state.removeCommand)
 export const useClearCommands = () =>
   useGameStore((state) => state.clearCommands)
 export const useSetRunning = () => useGameStore((state) => state.setRunning)

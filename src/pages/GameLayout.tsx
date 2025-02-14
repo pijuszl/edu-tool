@@ -20,7 +20,7 @@ const GameLayout = () => {
     const newWidth =
       ((e.clientX - containerRect.left) / containerRect.width) * 100
 
-    setLeftWidth(Math.min(Math.max(20, newWidth), 80))
+    setLeftWidth(Math.min(Math.max(30, newWidth), 80))
   }
 
   useEffect(() => {

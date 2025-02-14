@@ -135,6 +135,7 @@ const Game = ({ levels }: LevelData) => {
               (upperLayerData[newY][newX] === 1 ||
                 upperLayerData[newY][newX] === 2)
             ) {
+              setTargetPosition(convertPosition(x, y, layer))
               setIsMoving(false)
               return prev // No movement
             }
@@ -151,6 +152,7 @@ const Game = ({ levels }: LevelData) => {
           return { ...prev, x: newX, y: newY, layer }
         }
 
+        setTargetPosition(convertPosition(x, y, layer))
         setIsMoving(false)
         return prev // No movement
       })
@@ -183,15 +185,15 @@ const Game = ({ levels }: LevelData) => {
         switch (command) {
           case 'forward':
             await moveForward()
-            await new Promise((resolve) => setTimeout(resolve, 200)) // Small delay for state update
+            //await new Promise((resolve) => setTimeout(resolve, 200)) // Small delay for state update
             break
           case 'left':
             turnLeft()
-            await new Promise((resolve) => setTimeout(resolve, 500)) // Turn animation delay
+            //await new Promise((resolve) => setTimeout(resolve, 500)) // Turn animation delay
             break
           case 'right':
             turnRight()
-            await new Promise((resolve) => setTimeout(resolve, 500))
+            //await new Promise((resolve) => setTimeout(resolve, 500))
             break
         }
       }
@@ -231,6 +233,7 @@ const Game = ({ levels }: LevelData) => {
           position={catPos.toArray() as [number, number, number]}
           rotation={((characterPos.direction ?? 0) * Math.PI) / 3}
           targetPosition={targetPosition}
+          resetKey={resetKey}
           onMoveComplete={handleMoveComplete}
         />
       </Suspense>

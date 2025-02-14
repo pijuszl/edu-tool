@@ -8,6 +8,7 @@ import {
 import {
   useGameCommands,
   useAddCommand,
+  useRemoveCommand,
   useClearCommands,
   useSetRunning,
   useGameRunning,
@@ -23,6 +24,7 @@ const CodeEditor = ({ width, isDragging }: CodeEditorProps) => {
   const isRunning = useGameRunning()
   const commands = useGameCommands()
   const addCommand = useAddCommand()
+  const removeCommand = useRemoveCommand()
   const clearCommands = useClearCommands()
   const setRunning = useSetRunning()
 
@@ -125,56 +127,67 @@ const CodeEditor = ({ width, isDragging }: CodeEditorProps) => {
           sx={{
             flex: '0 0 20%',
             display: 'flex',
-            gap: 2,
+            flexDirection: 'column',
             alignItems: 'center',
-            justifyContent: 'center',
+            gap: 1,
           }}
         >
-          <IconButton
-            aria-label="turn left"
-            onClick={() => addCommand('left')}
-            disabled={isRunning}
-            color="primary"
-            size="large"
-          >
-            <RotateLeftIcon fontSize="inherit" />
-          </IconButton>
+          <Box sx={{ display: 'flex', gap: 2 }}>
+            <IconButton
+              aria-label="turn left"
+              onClick={() => addCommand('left')}
+              disabled={isRunning}
+              color="primary"
+              size="large"
+            >
+              <RotateLeftIcon fontSize="inherit" />
+            </IconButton>
 
-          <IconButton
-            aria-label="move forward"
-            onClick={() => addCommand('forward')}
-            disabled={isRunning}
-            color="primary"
-            size="large"
-          >
-            <ArrowUpwardIcon fontSize="inherit" />
-          </IconButton>
+            <IconButton
+              aria-label="move forward"
+              onClick={() => addCommand('forward')}
+              disabled={isRunning}
+              color="primary"
+              size="large"
+            >
+              <ArrowUpwardIcon fontSize="inherit" />
+            </IconButton>
 
-          <IconButton
-            aria-label="turn right"
-            onClick={() => addCommand('right')}
-            disabled={isRunning}
-            color="primary"
-            size="large"
-          >
-            <RotateRightIcon fontSize="inherit" />
-          </IconButton>
+            <IconButton
+              aria-label="turn right"
+              onClick={() => addCommand('right')}
+              disabled={isRunning}
+              color="primary"
+              size="large"
+            >
+              <RotateRightIcon fontSize="inherit" />
+            </IconButton>
+          </Box>
+          <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
+            <Button
+              variant="outlined"
+              size="large"
+              onClick={() => removeCommand()}
+            >
+              Remove Command
+            </Button>
 
-          <Button
-            variant="outlined"
-            size="large"
-            onClick={() => clearCommands()}
-          >
-            Clear Code
-          </Button>
+            <Button
+              variant="outlined"
+              size="large"
+              onClick={() => clearCommands()}
+            >
+              Clear Code
+            </Button>
 
-          <Button
-            variant="contained"
-            size="large"
-            onClick={() => setRunning(!isRunning)}
-          >
-            {!isRunning ? 'Run Code' : 'Stop Code'}
-          </Button>
+            <Button
+              variant="contained"
+              size="large"
+              onClick={() => setRunning(!isRunning)}
+            >
+              {!isRunning ? 'Run Code' : 'Stop Code'}
+            </Button>
+          </Box>
         </Box>
       </Box>
     </Paper>
