@@ -1,3 +1,4 @@
+// src/components/Game/index.tsx
 import {
   Suspense,
   useState,
@@ -30,13 +31,18 @@ const Game = ({ levels }: LevelData) => {
   const [currentLevel, setCurrentLevel] = useState<number>(0)
   const worldData: WorldData = levels[currentLevel]
 
-  const [characterPos, setCharacterPos] = useState<GridPosition>(
-    levels[currentLevel].start
+  const initialPosition = useMemo(
+    () => levels[currentLevel].start,
+    [currentLevel, levels]
   )
+
+  const [characterPos, setCharacterPos] =
+    useState<GridPosition>(initialPosition)
   const [targetPosition, setTargetPosition] = useState<THREE.Vector3 | null>(
     null
   )
   const [isMoving, setIsMoving] = useState<boolean>(false)
+  const [forceUpdate, setForceUpdate] = useState<boolean>(false)
 
   const commands = useGameCommands()
   const isRunning = useGameRunning()
@@ -180,20 +186,26 @@ const Game = ({ levels }: LevelData) => {
 
   const processCommands = async () => {
     if (commands.length > 0 && isRunning) {
-      console.log('commands: ', commands)
+      // First, force reset the character position
+      setCharacterPos(initialPosition)
+      setTargetPosition(null)
+      setForceUpdate(true)
+
+      // Wait for the force update to be applied
+      await new Promise((resolve) => setTimeout(resolve, 50))
+      setForceUpdate(false)
+
+      // Now process the commands
       for (const command of commands) {
         switch (command) {
           case 'forward':
             await moveForward()
-            //await new Promise((resolve) => setTimeout(resolve, 200)) // Small delay for state update
             break
           case 'left':
             turnLeft()
-            //await new Promise((resolve) => setTimeout(resolve, 500)) // Turn animation delay
             break
           case 'right':
             turnRight()
-            //await new Promise((resolve) => setTimeout(resolve, 500))
             break
         }
       }
@@ -210,7 +222,6 @@ const Game = ({ levels }: LevelData) => {
     }
     runCommands()
   }, [isRunning])
-
   // if (loading) return <div>Loading world...</div>
 
   // Compute the cat’s starting position by taking the grid position and adding the cat offset.
@@ -228,12 +239,12 @@ const Game = ({ levels }: LevelData) => {
       <directionalLight position={[3, 5, 2]} intensity={1.5} castShadow />
       <Suspense fallback={null}>
         {objects}
-
         <Character
           position={catPos.toArray() as [number, number, number]}
           rotation={((characterPos.direction ?? 0) * Math.PI) / 3}
           targetPosition={targetPosition}
           onMoveComplete={handleMoveComplete}
+          forceUpdate={forceUpdate}
         />
       </Suspense>
       <MapControls />

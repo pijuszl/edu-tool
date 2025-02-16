@@ -1,3 +1,4 @@
+// src/components/Game/Character.tsx
 import React, { useEffect, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { useGLTF, useAnimations } from '@react-three/drei'
@@ -19,6 +20,7 @@ interface CharacterProps {
   rotation: number
   targetPosition: THREE.Vector3 | null
   onMoveComplete: () => void
+  forceUpdate?: boolean
 }
 
 export const Character = ({
@@ -26,6 +28,7 @@ export const Character = ({
   rotation,
   targetPosition,
   onMoveComplete,
+  forceUpdate = false,
 }: CharacterProps) => {
   const { scene, animations } = useGLTF(
     '/src/assets/cat/cat.gltf'
@@ -55,8 +58,24 @@ export const Character = ({
     }
   }, [actions])
 
+  // Handle force updates (instant position changes)
   useEffect(() => {
-    if (targetPosition && !isMoving.current) {
+    if (forceUpdate && characterRef.current) {
+      currentPos.current.set(...adjustedPosition)
+      startPos.current.set(...adjustedPosition)
+      currentRotation.current = rotation
+      characterRef.current.position.copy(currentPos.current)
+      characterRef.current.rotation.y = rotation - Math.PI / 2 + Math.PI
+      isMoving.current = false
+      animationTime.current = 0
+      if (actions.Scene) {
+        actions.Scene.reset().stop()
+      }
+    }
+  }, [forceUpdate, adjustedPosition, rotation, actions])
+
+  useEffect(() => {
+    if (targetPosition && !isMoving.current && !forceUpdate) {
       startPos.current.copy(currentPos.current)
       animationTime.current = 0
       isMoving.current = true
@@ -65,17 +84,16 @@ export const Character = ({
         actions.Scene.reset().fadeIn(0.2).play()
       }
     }
-  }, [targetPosition, actions])
+  }, [targetPosition, actions, forceUpdate])
 
   useFrame((_, delta) => {
-    if (!characterRef.current) return
+    if (!characterRef.current || forceUpdate) return
 
     if (targetPosition && isMoving.current) {
       animationTime.current += delta
       const progress = Math.min(animationTime.current / ANIMATION_DURATION, 1)
       const easedProgress = easeInOutQuad(progress)
 
-      // Lerp only the x and z coordinates; lock y to the start value.
       const newPos = startPos.current
         .clone()
         .lerp(targetPosition, easedProgress)
@@ -92,7 +110,7 @@ export const Character = ({
       }
     }
 
-    if (characterRef.current) {
+    if (characterRef.current && !forceUpdate) {
       const targetRot = rotation - Math.PI / 2 + Math.PI
       const rotDelta = getShortestRotation(currentRotation.current, targetRot)
       currentRotation.current += rotDelta * delta * ROTATION_LERP_FACTOR
