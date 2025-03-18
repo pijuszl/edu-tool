@@ -1,4 +1,3 @@
-// src/components/Game/Character.tsx
 import React, { useEffect, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { useGLTF, useAnimations } from '@react-three/drei'
@@ -47,9 +46,12 @@ export const Character = ({
   ]
   const currentPos = useRef(new THREE.Vector3(...adjustedPosition))
   const startPos = useRef(new THREE.Vector3(...adjustedPosition))
-  const currentRotation = useRef(rotation)
+  const initialRotation = rotation - Math.PI / 2 + Math.PI // Calculate the correct initial rotation
+  const currentRotation = useRef(initialRotation) // Initialize with the correct rotation
+  const targetRotation = useRef(initialRotation) // Track the target rotation for animations
   const animationTime = useRef(0)
   const isMoving = useRef(false)
+  const isInitialRender = useRef(true) // Flag to track initial render
 
   useEffect(() => {
     if (actions.Scene) {
@@ -63,16 +65,33 @@ export const Character = ({
     if (forceUpdate && characterRef.current) {
       currentPos.current.set(...adjustedPosition)
       startPos.current.set(...adjustedPosition)
-      currentRotation.current = rotation
+      // Update both current and target rotation to the new rotation
+      const newTargetRot = rotation - Math.PI / 2 + Math.PI
+      currentRotation.current = newTargetRot
+      targetRotation.current = newTargetRot
       characterRef.current.position.copy(currentPos.current)
-      characterRef.current.rotation.y = rotation - Math.PI / 2 + Math.PI
+      characterRef.current.rotation.y = newTargetRot
       isMoving.current = false
       animationTime.current = 0
+      
       if (actions.Scene) {
         actions.Scene.reset().stop()
       }
     }
   }, [forceUpdate, adjustedPosition, rotation, actions])
+
+  // Update the target rotation when rotation prop changes
+  useEffect(() => {
+    const newTargetRot = rotation - Math.PI / 2 + Math.PI
+    targetRotation.current = newTargetRot
+
+    // If this is the initial render, set current rotation immediately (no animation)
+    if (isInitialRender.current && characterRef.current) {
+      currentRotation.current = newTargetRot
+      characterRef.current.rotation.y = newTargetRot
+      isInitialRender.current = false
+    }
+  }, [rotation])
 
   useEffect(() => {
     if (targetPosition && !isMoving.current && !forceUpdate) {
@@ -89,6 +108,7 @@ export const Character = ({
   useFrame((_, delta) => {
     if (!characterRef.current || forceUpdate) return
 
+    // Handle position animation
     if (targetPosition && isMoving.current) {
       animationTime.current += delta
       const progress = Math.min(animationTime.current / ANIMATION_DURATION, 1)
@@ -110,11 +130,16 @@ export const Character = ({
       }
     }
 
-    if (characterRef.current && !forceUpdate) {
-      const targetRot = rotation - Math.PI / 2 + Math.PI
-      const rotDelta = getShortestRotation(currentRotation.current, targetRot)
-      currentRotation.current += rotDelta * delta * ROTATION_LERP_FACTOR
-      characterRef.current.rotation.y = currentRotation.current
+    // Handle rotation animation (only after initial render)
+    if (!isInitialRender.current && characterRef.current) {
+      const rotDelta = getShortestRotation(
+        currentRotation.current,
+        targetRotation.current
+      )
+      if (Math.abs(rotDelta) > 0.001) {
+        currentRotation.current += rotDelta * delta * ROTATION_LERP_FACTOR
+        characterRef.current.rotation.y = currentRotation.current
+      }
     }
   })
 
@@ -124,7 +149,7 @@ export const Character = ({
       object={scene}
       position={adjustedPosition}
       scale={[CHARACTER_SCALE, CHARACTER_SCALE, CHARACTER_SCALE]}
-      rotation={[0, Math.PI, 0]}
+      rotation={[0, initialRotation, 0]} // Set initial rotation only (will be updated by ref)
     />
   )
 }

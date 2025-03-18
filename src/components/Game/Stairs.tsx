@@ -31,7 +31,7 @@ export const Stairs = ({ position, direction = 0 }: GamePosition) => {
         receiveShadow
         geometry={(nodes.Object_216 as THREE.Mesh).geometry}
         material={materials.lpb_gradient}
-        position={[-0.2, 0.1, 0.2]}
+        position={[-0.17, 0.1, 0.2]}
         scale={STAIRS_SCALE}
       />
     </group>

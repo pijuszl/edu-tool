@@ -11,9 +11,9 @@ export type GridMoves = {
 }
 
 export type WorldData = {
-  start: Position
+  start: GridPosition
   layers: number[][][]
-  collectables: Position[]
+  collectables: GridPosition[]
 }
 
 export type LevelData = {
