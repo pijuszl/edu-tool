@@ -19,6 +19,7 @@ interface CharacterProps {
   rotation: number
   targetPosition: THREE.Vector3 | null
   onMoveComplete: () => void
+  forceUpdate?: boolean
 }
 
 export const Character = ({
@@ -26,6 +27,7 @@ export const Character = ({
   rotation,
   targetPosition,
   onMoveComplete,
+  forceUpdate = false,
 }: CharacterProps) => {
   const { scene, animations } = useGLTF(
     '/src/assets/cat/cat.gltf'
@@ -44,9 +46,12 @@ export const Character = ({
   ]
   const currentPos = useRef(new THREE.Vector3(...adjustedPosition))
   const startPos = useRef(new THREE.Vector3(...adjustedPosition))
-  const currentRotation = useRef(rotation)
+  const initialRotation = rotation - Math.PI / 2 + Math.PI // Calculate the correct initial rotation
+  const currentRotation = useRef(initialRotation) // Initialize with the correct rotation
+  const targetRotation = useRef(initialRotation) // Track the target rotation for animations
   const animationTime = useRef(0)
   const isMoving = useRef(false)
+  const isInitialRender = useRef(true) // Flag to track initial render
 
   useEffect(() => {
     if (actions.Scene) {
@@ -55,8 +60,41 @@ export const Character = ({
     }
   }, [actions])
 
+  // Handle force updates (instant position changes)
   useEffect(() => {
-    if (targetPosition && !isMoving.current) {
+    if (forceUpdate && characterRef.current) {
+      currentPos.current.set(...adjustedPosition)
+      startPos.current.set(...adjustedPosition)
+      // Update both current and target rotation to the new rotation
+      const newTargetRot = rotation - Math.PI / 2 + Math.PI
+      currentRotation.current = newTargetRot
+      targetRotation.current = newTargetRot
+      characterRef.current.position.copy(currentPos.current)
+      characterRef.current.rotation.y = newTargetRot
+      isMoving.current = false
+      animationTime.current = 0
+      
+      if (actions.Scene) {
+        actions.Scene.reset().stop()
+      }
+    }
+  }, [forceUpdate, adjustedPosition, rotation, actions])
+
+  // Update the target rotation when rotation prop changes
+  useEffect(() => {
+    const newTargetRot = rotation - Math.PI / 2 + Math.PI
+    targetRotation.current = newTargetRot
+
+    // If this is the initial render, set current rotation immediately (no animation)
+    if (isInitialRender.current && characterRef.current) {
+      currentRotation.current = newTargetRot
+      characterRef.current.rotation.y = newTargetRot
+      isInitialRender.current = false
+    }
+  }, [rotation])
+
+  useEffect(() => {
+    if (targetPosition && !isMoving.current && !forceUpdate) {
       startPos.current.copy(currentPos.current)
       animationTime.current = 0
       isMoving.current = true
@@ -65,17 +103,17 @@ export const Character = ({
         actions.Scene.reset().fadeIn(0.2).play()
       }
     }
-  }, [targetPosition, actions])
+  }, [targetPosition, actions, forceUpdate])
 
   useFrame((_, delta) => {
-    if (!characterRef.current) return
+    if (!characterRef.current || forceUpdate) return
 
+    // Handle position animation
     if (targetPosition && isMoving.current) {
       animationTime.current += delta
       const progress = Math.min(animationTime.current / ANIMATION_DURATION, 1)
       const easedProgress = easeInOutQuad(progress)
 
-      // Lerp only the x and z coordinates; lock y to the start value.
       const newPos = startPos.current
         .clone()
         .lerp(targetPosition, easedProgress)
@@ -92,11 +130,16 @@ export const Character = ({
       }
     }
 
-    if (characterRef.current) {
-      const targetRot = rotation - Math.PI / 2 + Math.PI
-      const rotDelta = getShortestRotation(currentRotation.current, targetRot)
-      currentRotation.current += rotDelta * delta * ROTATION_LERP_FACTOR
-      characterRef.current.rotation.y = currentRotation.current
+    // Handle rotation animation (only after initial render)
+    if (!isInitialRender.current && characterRef.current) {
+      const rotDelta = getShortestRotation(
+        currentRotation.current,
+        targetRotation.current
+      )
+      if (Math.abs(rotDelta) > 0.001) {
+        currentRotation.current += rotDelta * delta * ROTATION_LERP_FACTOR
+        characterRef.current.rotation.y = currentRotation.current
+      }
     }
   })
 
@@ -106,7 +149,7 @@ export const Character = ({
       object={scene}
       position={adjustedPosition}
       scale={[CHARACTER_SCALE, CHARACTER_SCALE, CHARACTER_SCALE]}
-      rotation={[0, Math.PI, 0]}
+      rotation={[0, initialRotation, 0]} // Set initial rotation only (will be updated by ref)
     />
   )
 }
