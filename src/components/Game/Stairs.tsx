@@ -17,7 +17,7 @@ type GLTFResult = GLTF & {
 export const Stairs = ({ position, direction = 0 }: GamePosition) => {
   const { nodes, materials } = useGLTF(stairsModel) as GLTFResult
 
-  const rotation = direction * -(Math.PI / 3) - Math.PI / 6
+  const rotation = direction * -(Math.PI / 3) - Math.PI / 2
   const offsetX = (HEX_METRICS.radius / 2) * Math.sin(rotation)
   const offsetZ = (HEX_METRICS.radius / 2) * Math.cos(rotation)
 
