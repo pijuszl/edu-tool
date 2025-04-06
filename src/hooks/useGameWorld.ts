@@ -24,6 +24,7 @@ export const useGameWorld = (
               React.createElement(Hexagon, {
                 key: `${layerIndex}-${x}-${y}`,
                 position: [pos.x, pos.y, pos.z],
+                isEven: (x + y) % 2 === 0,
               })
             )
           } else if (value === 2) {

@@ -16,7 +16,6 @@ export function useCharacterMovement(
   )
   const [isMoving, setIsMoving] = useState<boolean>(false)
   const [forceUpdate, setForceUpdate] = useState<boolean>(false)
-  // Add new state to track climbing
   const [isClimbing, setIsClimbing] = useState<boolean>(false)
 
   const moveResolveRef = useRef<(() => void) | null>(null)
@@ -52,9 +51,8 @@ export function useCharacterMovement(
       }
 
       const tileValue = layerData[y][x]
-      // Stair tiles are in the 30-35 range (30 + direction)
       if (tileValue >= 30 && tileValue <= 35) {
-        return tileValue - 30 // Extract direction (0-5)
+        return tileValue - 30
       }
 
       return null
@@ -133,27 +131,20 @@ export function useCharacterMovement(
           }
         }
 
-        // If movement is not possible, stay at current position
         if (!canMove) {
           const currentPos = convertPosition(x, y, layer)
-          setTargetPosition(currentPos) // Set target to current position (no movement)
-          return prev // No movement
+          setTargetPosition(currentPos)
+          return prev
         }
 
-        // Calculate the new position in 3D space
         const newTilePos = convertPosition(newX, newY, newLayer)
-
-        // Set target position for the character to move to
         setTargetPosition(newTilePos)
 
-        // Return the new position
         return { ...prev, x: newX, y: newY, layer: newLayer }
       })
 
-      // Wait for React to update the state before proceeding
       await new Promise((resolve) => setTimeout(resolve, 50))
 
-      // Return a promise that resolves when movement is complete
       return new Promise<void>((resolve) => {
         moveResolveRef.current = resolve
       })
@@ -177,9 +168,8 @@ export function useCharacterMovement(
     setCharacterPos(position)
     setTargetPosition(null)
     setForceUpdate(true)
-    setIsClimbing(false) // Reset climbing state on position reset
+    setIsClimbing(false)
 
-    // Reset force update flag after a short delay
     setTimeout(() => {
       setForceUpdate(false)
     }, 50)

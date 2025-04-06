@@ -20,7 +20,8 @@ export function Collectable({ position, isCollected }: CollectableProps) {
   useFrame((state) => {
     if (ref.current && !isCollected) {
       // Rotate the collectable
-      ref.current.rotation.y += 0.005
+      //ref.current.rotation.y += 0.005
+      ref.current.rotation.z += 0.005
 
       // Make it float up and down slightly
       ref.current.position.y =

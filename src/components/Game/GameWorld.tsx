@@ -8,6 +8,7 @@ import * as THREE from 'three'
 interface GameWorldProps {
   worldObjects: React.ReactNode[]
   collectableElements: React.ReactNode[]
+  finishElement: React.ReactNode
   characterPosition: [number, number, number]
   characterRotation: number
   targetPosition: THREE.Vector3 | null
@@ -19,12 +20,13 @@ interface GameWorldProps {
 export const GameWorld = ({
   worldObjects,
   collectableElements,
+  finishElement,
   characterPosition,
   characterRotation,
   targetPosition,
   onMoveComplete,
   forceUpdate,
-  isClimbing, // New prop to indicate if this is a climbing movement
+  isClimbing,
 }: GameWorldProps) => {
   return (
     <Canvas camera={{ position: [-2, 2, 3], fov: 50 }}>
@@ -33,6 +35,7 @@ export const GameWorld = ({
       <Suspense fallback={null}>
         {worldObjects}
         {collectableElements}
+        {finishElement}
         <Character
           position={characterPosition}
           rotation={characterRotation}

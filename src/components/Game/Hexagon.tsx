@@ -3,7 +3,10 @@ import * as THREE from 'three'
 import { HEX_METRICS } from '../../config/game-config'
 import { GamePosition } from '../../types/game-types'
 
-export const Hexagon = ({ position }: GamePosition) => {
+export const Hexagon = ({
+  position,
+  isEven,
+}: GamePosition & { isEven: boolean }) => {
   const ref = useRef<THREE.Mesh>(null)
 
   const geometry = useMemo(() => {
@@ -35,7 +38,7 @@ export const Hexagon = ({ position }: GamePosition) => {
   return (
     <>
       <mesh ref={ref} geometry={geometry} position={position}>
-        <meshToonMaterial color="#00ff59" />
+        <meshToonMaterial color={isEven ? '#00ff59' : '#0ee85a'} />
       </mesh>
     </>
   )

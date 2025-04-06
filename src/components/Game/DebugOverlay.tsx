@@ -4,17 +4,13 @@ interface DebugOverlayProps {
   characterPos: GridPosition
   collectables: { layer: number; x: number; y: number }[] | undefined
   collectedItems: boolean[]
-  enabled?: boolean
 }
 
 export const DebugOverlay = ({
   characterPos,
   collectables,
   collectedItems,
-  enabled = true,
 }: DebugOverlayProps) => {
-  if (!enabled) return null
-
   return (
     <div
       style={{

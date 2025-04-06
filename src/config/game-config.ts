@@ -8,6 +8,10 @@ export const ANIMATION_TIMESCALE = 0.7
 export const STAIRS_SCALE = 0.75
 export const TREES_SCALE = 0.65
 export const COINS_SCALE = 1.0
+export const FINISH_SCALE = 0.5
+
+export const DEFAULT_CODE = `// Write your code here
+// Use commands: forward(), left(), right()`
 
 export const DIRECTIONS_EVEN: GridMoves[] = [
   { dx: 1, dy: 0 },
