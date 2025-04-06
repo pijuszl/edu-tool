@@ -1,15 +1,12 @@
-// src/components/Game/ScoreDisplay.tsx
-import React from 'react'
-
-interface ScoreDisplayProps {
+type ScoreDisplayProps = {
   score: number
   totalCollectables: number
 }
 
-export const ScoreDisplay: React.FC<ScoreDisplayProps> = ({
+export const ScoreDisplay = ({
   score,
   totalCollectables,
-}) => {
+}: ScoreDisplayProps) => {
   return (
     <div
       style={{

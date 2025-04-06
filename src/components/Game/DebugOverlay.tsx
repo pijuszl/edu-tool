@@ -1,5 +1,3 @@
-// src/components/Game/DebugOverlay.tsx
-import React from 'react'
 import { GridPosition } from '../../types/game-types'
 
 interface DebugOverlayProps {
@@ -9,12 +7,12 @@ interface DebugOverlayProps {
   enabled?: boolean
 }
 
-export const DebugOverlay: React.FC<DebugOverlayProps> = ({
+export const DebugOverlay = ({
   characterPos,
   collectables,
   collectedItems,
   enabled = true,
-}) => {
+}: DebugOverlayProps) => {
   if (!enabled) return null
 
   return (
