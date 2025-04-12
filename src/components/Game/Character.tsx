@@ -1,4 +1,3 @@
-// components/Game/Character.tsx
 import React, { useEffect, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { useGLTF, useAnimations } from '@react-three/drei'
@@ -19,7 +18,8 @@ interface CharacterProps {
   targetPosition: THREE.Vector3 | null
   onMoveComplete: () => void
   forceUpdate?: boolean
-  isClimbing?: boolean // New prop to indicate if this is a climbing movement
+  isClimbing?: boolean
+  isClimbingDown?: boolean // New prop to indicate if climbing down
 }
 
 export const Character = ({
@@ -28,7 +28,8 @@ export const Character = ({
   targetPosition,
   onMoveComplete,
   forceUpdate = false,
-  isClimbing = false, // Default to false for backward compatibility
+  isClimbing = false,
+  isClimbingDown = false, // Default to false
 }: CharacterProps) => {
   const { scene, animations } = useGLTF(
     '/src/assets/cat/cat.gltf'
@@ -54,7 +55,7 @@ export const Character = ({
   const isMoving = useRef(false)
   const isInitialRender = useRef(true) // Flag to track initial render
 
-  // New refs for climbing animation
+  // Refs for climbing animation
   const isInClimbingAnimation = useRef(false)
   const climbingPhase = useRef(0) // 0 = not climbing, 1 = first phase, 2 = second phase
   const intermediatePos = useRef(new THREE.Vector3())
@@ -87,15 +88,13 @@ export const Character = ({
         actions.Scene.reset().stop()
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [forceUpdate, adjustedPosition, rotation]) // Removed actions dependency
+  }, [forceUpdate, adjustedPosition, rotation])
 
   // Update the target rotation when rotation prop changes
   useEffect(() => {
     const newTargetRot = rotation + Math.PI / 2
     targetRotation.current = newTargetRot
 
-    // If this is the initial render, set current rotation immediately (no animation)
     if (isInitialRender.current && characterRef.current) {
       currentRotation.current = newTargetRot
       characterRef.current.rotation.y = newTargetRot
@@ -109,31 +108,49 @@ export const Character = ({
       animationTime.current = 0
       isMoving.current = true
 
-      // Reset climbing animation state
-      climbingPhase.current = isClimbing ? 1 : 0
-      isInClimbingAnimation.current = isClimbing
+      // Determine if we're climbing (up or down)
+      const isAnyClimbing = isClimbing || isClimbingDown
 
-      // If climbing, calculate the intermediate position
-      if (isClimbing && targetPosition) {
-        // First phase: move diagonally up
+      // Reset climbing animation state
+      climbingPhase.current = isAnyClimbing ? 1 : 0
+      isInClimbingAnimation.current = isAnyClimbing
+
+      // If climbing (either up or down), calculate the intermediate position
+      if (isAnyClimbing && targetPosition) {
+        // Calculate direction vector
         const directionVector = new THREE.Vector3()
           .subVectors(targetPosition, startPos.current)
           .normalize()
 
-        // Create an intermediate position that's halfway horizontally and fully up
+        // Create an intermediate position
         intermediatePos.current = startPos.current.clone()
+
+        // Move halfway horizontally
         intermediatePos.current.x +=
           directionVector.x * (HEX_METRICS.horizontalSpacing / 2)
         intermediatePos.current.z +=
           directionVector.z * (HEX_METRICS.verticalSpacing / 2)
-        intermediatePos.current.y = targetPosition.y // Go fully up to the target height
+
+        // For climbing up: go fully up first
+        // For climbing down: stay at current height for first phase
+        if (isClimbing) {
+          // When climbing up, move vertically to target height first
+          intermediatePos.current.y = targetPosition.y
+          console.log('Climbing up animation - Phase 1: Move diagonally up')
+        } else if (isClimbingDown) {
+          // When climbing down, stay at current height for first phase
+          intermediatePos.current.y = startPos.current.y
+          console.log(
+            'Climbing down animation - Phase 1: Move horizontally first'
+          )
+        }
       }
 
       if (actions.Scene) {
         actions.Scene.reset().fadeIn(0.2).play()
       }
     }
-  }, [targetPosition, isClimbing])
+  }, [targetPosition, isClimbing, isClimbingDown])
 
   useFrame((_, delta) => {
     if (!characterRef.current || forceUpdate) return
@@ -144,14 +161,15 @@ export const Character = ({
 
       // Handle climbing animation with two phases
       if (isInClimbingAnimation.current) {
-        const targetForCurrentPhase =
-          climbingPhase.current === 1 ? intermediatePos.current : targetPosition
-
         const progress = Math.min(
           animationTime.current / climbAnimationDuration,
           1
         )
         const easedProgress = easeInOutQuad(progress)
+
+        // Use the intermediate position for the first phase
+        const targetForCurrentPhase =
+          climbingPhase.current === 1 ? intermediatePos.current : targetPosition
 
         const newPos = startPos.current
           .clone()
@@ -164,6 +182,15 @@ export const Character = ({
           climbingPhase.current = 2
           startPos.current.copy(intermediatePos.current)
           animationTime.current = 0
+
+          // Log phase change
+          if (isClimbing) {
+            console.log('Climbing up animation - Phase 2: Move horizontally')
+          } else {
+            console.log(
+              'Climbing down animation - Phase 2: Move diagonally down'
+            )
+          }
         }
         // If second phase is complete, finish animation
         else if (progress >= 1 && climbingPhase.current === 2) {

@@ -62,6 +62,7 @@ const Game = ({ levels }: LevelData) => {
     targetPosition,
     forceUpdate,
     isClimbing,
+    isClimbingDown,
     turnLeft,
     turnRight,
     moveForward,
@@ -77,15 +78,13 @@ const Game = ({ levels }: LevelData) => {
     resetCollectables,
   } = useCollectables(worldData, characterPos, convertPosition)
 
-  // Setup command processor
   useCommandProcessor(
     moveForward,
     turnLeft,
     turnRight,
     resetCharacterPosition,
     resetCollectables,
-    initialPosition,
-    worldData
+    initialPosition
   )
 
   // Calculate if all collectables are collected
@@ -106,15 +105,12 @@ const Game = ({ levels }: LevelData) => {
     ) {
       console.log(`Level ${currentLevelIndex} completed!`)
 
-      // Mark current level as completed
       completeLevel(currentLevelIndex)
 
-      // Unlock next level if it exists
       if (currentLevelIndex < levels.length - 1) {
         unlockLevel(currentLevelIndex + 1)
       }
 
-      // Show completion dialog instead of auto-advancing
       setLevelCompleted(currentLevelIndex)
       setShowLevelCompleteDialog(true)
     }
@@ -237,6 +233,7 @@ const Game = ({ levels }: LevelData) => {
         onMoveComplete={onMoveComplete}
         forceUpdate={forceUpdate}
         isClimbing={isClimbing}
+        isClimbingDown={isClimbingDown}
       />
 
       {/* Level completion dialog */}

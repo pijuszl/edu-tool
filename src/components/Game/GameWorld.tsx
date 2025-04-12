@@ -15,6 +15,7 @@ interface GameWorldProps {
   onMoveComplete: () => void
   forceUpdate: boolean
   isClimbing: boolean
+  isClimbingDown: boolean
 }
 
 export const GameWorld = ({
@@ -27,6 +28,7 @@ export const GameWorld = ({
   onMoveComplete,
   forceUpdate,
   isClimbing,
+  isClimbingDown,
 }: GameWorldProps) => {
   return (
     <Canvas camera={{ position: [-2, 2, 3], fov: 50 }}>
@@ -42,7 +44,8 @@ export const GameWorld = ({
           targetPosition={targetPosition}
           onMoveComplete={onMoveComplete}
           forceUpdate={forceUpdate}
-          isClimbing={isClimbing} // Pass false for climbing prop
+          isClimbing={isClimbing}
+          isClimbingDown={isClimbingDown}
         />
       </Suspense>
       <MapControls />

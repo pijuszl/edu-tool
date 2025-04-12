@@ -259,7 +259,6 @@ const CodeEditor = ({ width, isDragging }: CodeEditorProps) => {
           </>
         )}
 
-        {/* Control Buttons - Always visible */}
         <Box
           sx={{ display: 'flex', justifyContent: 'center', gap: 2, mt: 'auto' }}
         >

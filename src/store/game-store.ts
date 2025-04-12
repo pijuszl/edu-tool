@@ -11,9 +11,9 @@ type State = {
   isRunning: boolean
   editorMode: EditorMode
   code: string
-  completedLevels: number[] // Track completed levels
-  unlockedLevels: number[] // Track unlocked levels
-  currentLevelIndex: number // Track current level
+  completedLevels: number[]
+  unlockedLevels: number[]
+  currentLevelIndex: number
 }
 
 type Actions = {
@@ -55,7 +55,7 @@ const useGameStore = create<State & Actions>()(
       editorMode: 'block',
       code: DEFAULT_CODE,
       completedLevels: [],
-      unlockedLevels: [0], // First level is unlocked by default
+      unlockedLevels: [0],
       currentLevelIndex: 0,
 
       addCommand: (command: Command) =>
