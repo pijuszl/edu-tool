@@ -1,7 +1,7 @@
 // src/components/CodeEditor/BlocklyUtils.ts
 import * as Blockly from 'blockly'
 import { javascriptGenerator } from 'blockly/javascript'
-import { Command } from '../types/editor-types'
+import { Command } from '../types/game-types'
 import { parseCodeToCommands } from './codeParser'
 
 /**

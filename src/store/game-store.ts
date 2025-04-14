@@ -2,7 +2,7 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import { DEFAULT_CODE } from '../config/game-config'
-import { Command } from '../types/editor-types'
+import { Command } from '../types/game-types'
 
 type State = {
   commands: Command[]
