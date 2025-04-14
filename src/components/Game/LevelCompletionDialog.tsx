@@ -37,25 +37,29 @@ export const LevelCompletionDialog = ({
       onClose={onClose}
       maxWidth="sm"
       fullWidth
-      PaperProps={{
-        borderRadius: 2,
-        background: 'linear-gradient(135deg, #1a2a6c, #2a3a7c, 0.5)',
-        color: 'white',
+      slotProps={{
+        paper: {
+          sx: {
+            borderRadius: 2,
+            background: 'linear-gradient(135deg, #00ff59, #00fff2)',
+            color: 'white',
+          },
+        },
       }}
     >
       <DialogTitle className="py-4 text-center">
         <Box className="flex flex-col items-center justify-center">
           <EmojiEvents className="mb-2 text-5xl text-yellow-400" />
           <Typography variant="h4" className="font-bold text-white">
-            Level {levelIndex + 1} Complete!
+            {levelIndex + 1} Lygis Pereitas!
           </Typography>
         </Box>
       </DialogTitle>
 
       <DialogContent>
         <Box className="flex flex-col items-center py-4">
-          <Typography variant="h6" className="mb-4 text-blue-200">
-            Collectables: {collectablesCollected} / {totalCollectables}
+          <Typography variant="h6" className="mb-4 text-white">
+            Surinkta taškų: {collectablesCollected} / {totalCollectables}
           </Typography>
 
           <Box className="my-4 flex justify-center transition-all duration-500" />
@@ -65,7 +69,7 @@ export const LevelCompletionDialog = ({
               variant="h6"
               className="mt-4 text-center text-green-300"
             >
-              Congratulations! You've completed all available levels!
+              Sveikiname! Tu perėjai visus lygius!
             </Typography>
           )}
         </Box>
@@ -80,7 +84,7 @@ export const LevelCompletionDialog = ({
             className="mr-2 px-8 py-2"
             size="large"
           >
-            Next Level
+            Kitas Lygis
           </Button>
         )}
         <Button
@@ -88,7 +92,7 @@ export const LevelCompletionDialog = ({
           variant="outlined"
           className="border-white px-6 py-2 text-white hover:bg-white hover:bg-opacity-10"
         >
-          {isLastLevel ? 'Continue' : 'Menu'}
+          {isLastLevel ? 'Tęsti' : 'Grįžti į žaidimą'}
         </Button>
       </DialogActions>
     </Dialog>

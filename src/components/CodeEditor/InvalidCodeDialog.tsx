@@ -12,6 +12,7 @@ interface InvalidCodeDialogProps {
   open: boolean
   onConfirm: () => void
   onCancel: () => void
+  type: 'run' | 'switch'
 }
 
 /**
@@ -21,20 +22,37 @@ const InvalidCodeDialog: React.FC<InvalidCodeDialogProps> = ({
   open,
   onConfirm,
   onCancel,
+  type,
 }) => {
   return (
     <Dialog open={open} onClose={onCancel}>
-      <DialogTitle>Invalid Code</DialogTitle>
-      <DialogContent>
-        The current code contains syntax errors. If you switch modes, all code
-        will be deleted. Are you sure you want to continue?
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={onCancel}>Cancel</Button>
-        <Button onClick={onConfirm} autoFocus>
-          Continue
-        </Button>
-      </DialogActions>
+      <DialogTitle>Klaidingas kodas</DialogTitle>
+      {type === 'switch' ? (
+        <>
+          <DialogContent>
+            Esantis kodas turi sintaksės klaidų. Jei pakeisite režimą, visas
+            kodas bus ištrintas. Ar tikrai norite tęsti?
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={onCancel}>Cancel</Button>
+            <Button onClick={onConfirm} autoFocus>
+              Continue
+            </Button>
+          </DialogActions>
+        </>
+      ) : (
+        <>
+          <DialogContent>
+            Esantis kodas turi sintaksės klaidų. Pataisykite esančias klaidas
+            prieš paleidžiant kodą.
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={onConfirm} autoFocus>
+              Gerai
+            </Button>
+          </DialogActions>
+        </>
+      )}
     </Dialog>
   )
 }

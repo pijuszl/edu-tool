@@ -7,7 +7,7 @@ import BlockEditor from './BlockEditor'
 import CodeTextEditor from './CodeTextEditor'
 import EditorControls from './EditorControls'
 import InvalidCodeDialog from './InvalidCodeDialog'
-import { Command } from '../../types/editor-types'
+import { Command } from '../../types/game-types'
 
 interface CodeEditorProps {
   width: number
@@ -25,6 +25,7 @@ const CodeEditor: React.FC<CodeEditorProps> = ({ width, isDragging }) => {
     isRunning,
     commands,
     addCommand,
+    addManyCommands,
     removeCommandAt,
     clearCommands,
     editorMode,
@@ -35,13 +36,22 @@ const CodeEditor: React.FC<CodeEditorProps> = ({ width, isDragging }) => {
     showInvalidCodeDialog,
     handleInvalidCodeDialogConfirm,
     handleInvalidCodeDialogCancel,
+    errorType,
   } = useCodeEditor()
 
   const handleSyncCommands = (newCommands: Command[]) => {
     clearCommands()
-    newCommands.forEach((command) => {
-      addCommand(command)
-    })
+    addManyCommands(newCommands)
+  }
+
+  const handleModeChangeWithApply = () => {
+    // Apply BlockEditor changes first if we're in block mode
+    if (editorMode === 'block' && blockEditorRef.current) {
+      console.log('Applying changes from BlockEditor')
+      blockEditorRef.current.applyChanges()
+    }
+
+    handleModeChange()
   }
 
   const handleRunWithApply = () => {
@@ -57,6 +67,7 @@ const CodeEditor: React.FC<CodeEditorProps> = ({ width, isDragging }) => {
     if (editorMode === 'block' && blockEditorRef.current) {
       blockEditorRef.current.applyChanges()
     }
+    
     clearCommands()
   }
 
@@ -72,7 +83,7 @@ const CodeEditor: React.FC<CodeEditorProps> = ({ width, isDragging }) => {
       <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
         <EditorModeToggle
           isCodeMode={editorMode === 'code'}
-          onToggle={handleModeChange}
+          onToggle={handleModeChangeWithApply}
           disabled={isRunning}
         />
       </Box>
@@ -106,6 +117,7 @@ const CodeEditor: React.FC<CodeEditorProps> = ({ width, isDragging }) => {
         open={showInvalidCodeDialog}
         onConfirm={handleInvalidCodeDialogConfirm}
         onCancel={handleInvalidCodeDialogCancel}
+        type={errorType}
       />
     </Paper>
   )

@@ -1,5 +1,5 @@
 //useCodeEditor.ts
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback } from 'react'
 import {
   useGameCommands,
   useAddCommand,
@@ -27,7 +27,7 @@ export const useCodeEditor = () => {
 
   const [showInvalidCodeDialog, setShowInvalidCodeDialog] = useState(false)
   const [pendingMode, setPendingMode] = useState<'block' | 'code' | null>(null)
-  const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [errorType, setErrorType] = useState<'run' | 'switch'>('run')
 
   const handleCodeChange = useCallback(
     (newCode: string | undefined) => {
@@ -45,7 +45,7 @@ export const useCodeEditor = () => {
 
       if (error) {
         // If there's an execution error, show the dialog
-        setErrorMessage(error)
+        setErrorType('switch')
         setPendingMode(newMode)
         setShowInvalidCodeDialog(true)
         return
@@ -69,7 +69,7 @@ export const useCodeEditor = () => {
 
       if (error) {
         // If there's an execution error, show a dialog
-        setErrorMessage(error)
+        setErrorType('run')
         setShowInvalidCodeDialog(true)
         return
       }
@@ -91,20 +91,18 @@ export const useCodeEditor = () => {
       setEditorMode(pendingMode)
       setPendingMode(null)
     }
-
-    setErrorMessage(null)
   }
 
   const handleInvalidCodeDialogCancel = () => {
     setShowInvalidCodeDialog(false)
     setPendingMode(null)
-    setErrorMessage(null)
   }
 
   return {
     isRunning,
     commands,
     addCommand,
+    addManyCommands,
     removeCommandAt,
     clearCommands,
     editorMode,
@@ -115,6 +113,6 @@ export const useCodeEditor = () => {
     showInvalidCodeDialog,
     handleInvalidCodeDialogConfirm,
     handleInvalidCodeDialogCancel,
-    errorMessage,
+    errorType,
   }
 }

@@ -17,11 +17,11 @@ const EditorControls = ({ onRun, onClear, isRunning }: EditorControlsProps) => {
         onClick={onClear}
         disabled={isRunning}
       >
-        Clear Code
+        Ištrinti Kodą
       </Button>
 
       <Button variant="contained" size="large" onClick={onRun}>
-        {!isRunning ? 'Run Code' : 'Stop Code'}
+        {!isRunning ? 'Paleisti Kodą' : 'Sustabdyti Kodą'}
       </Button>
     </Box>
   )

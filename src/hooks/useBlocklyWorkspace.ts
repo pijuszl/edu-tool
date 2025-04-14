@@ -1,7 +1,7 @@
 // src/components/CodeEditor/useBlocklyWorkspace.ts
 import { useRef, useState, useEffect } from 'react'
 import * as Blockly from 'blockly'
-import { Command } from '../types/editor-types'
+import { Command } from '../types/game-types'
 import {
   defineCustomBlocks,
   createToolbox,

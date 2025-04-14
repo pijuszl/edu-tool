@@ -26,7 +26,7 @@ const EditorModeToggle: React.FC<EditorModeToggleProps> = ({
         <Box sx={{ display: 'flex', alignItems: 'center' }}>
           {isCodeMode ? <CodeIcon /> : <BlocksIcon />}
           <Typography sx={{ ml: 1 }}>
-            {isCodeMode ? 'Code Mode' : 'Block Mode'}
+            {isCodeMode ? 'Teksto Režimas' : 'Blokų Režimas'}
           </Typography>
         </Box>
       }

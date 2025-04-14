@@ -1,4 +1,4 @@
-import { Command } from '../types/editor-types'
+import { Command } from '../types/game-types'
 
 /**
  * Execute code and collect commands with timeout protection

@@ -32,3 +32,5 @@ export type GamePosition = {
   position: [number, number, number]
   direction?: number
 }
+
+export type Command = 'forward' | 'left' | 'right'

@@ -48,7 +48,7 @@ export const GameUI: React.FC<GameUIProps> = ({
         sx={{ backgroundColor: 'rgba(0, 0, 0, 0.7)' }}
       >
         <Typography variant="h5" className="text-white">
-          Level: {levelIndex + 1} / {levelCount}
+          Lygis: {levelIndex + 1} / {levelCount}
         </Typography>
 
         {/* Status of collectables */}
@@ -57,7 +57,7 @@ export const GameUI: React.FC<GameUIProps> = ({
             variant="h6"
             className={`${allCollectablesCollected ? 'text-green-500' : 'text-orange-400'} flex items-center`}
           >
-            Collectables: {score} / {totalCollectables}
+            Surinkti taškai: {score} / {totalCollectables}
             {allCollectablesCollected && totalCollectables > 0 && (
               <CheckCircleIcon
                 className="ml-1 text-green-500"

@@ -9,7 +9,7 @@ import React, {
 import { Box, Typography, Alert, Button } from '@mui/material'
 import * as Blockly from 'blockly'
 import { javascriptGenerator } from 'blockly/javascript'
-import { Command } from '../../types/editor-types'
+import { Command } from '../../types/game-types'
 import { parseCodeToCommands } from '../../utils/codeParser'
 
 interface BlockEditorProps {
@@ -30,33 +30,33 @@ const defineCustomBlocks = () => {
   // Move Forward block
   Blockly.Blocks['move_forward'] = {
     init: function () {
-      this.appendDummyInput().appendField('Move Forward')
+      this.appendDummyInput().appendField('Eiti Pirmyn')
       this.setPreviousStatement(true, null)
       this.setNextStatement(true, null)
       this.setColour(120) // Green
-      this.setTooltip('Move the character forward')
+      this.setTooltip('Judinti veikėją pirmyn')
     },
   }
 
   // Turn Left block
   Blockly.Blocks['turn_left'] = {
     init: function () {
-      this.appendDummyInput().appendField('Turn Left')
+      this.appendDummyInput().appendField('Sukti į kairę')
       this.setPreviousStatement(true, null)
       this.setNextStatement(true, null)
       this.setColour(230) // Blue
-      this.setTooltip('Turn the character left')
+      this.setTooltip('Sukti veikėją į kairę')
     },
   }
 
   // Turn Right block
   Blockly.Blocks['turn_right'] = {
     init: function () {
-      this.appendDummyInput().appendField('Turn Right')
+      this.appendDummyInput().appendField('Sukti į dešinę')
       this.setPreviousStatement(true, null)
       this.setNextStatement(true, null)
       this.setColour(230) // Blue
-      this.setTooltip('Turn the character right')
+      this.setTooltip('Sukti veikėją į dešinę')
     },
   }
 
@@ -83,6 +83,7 @@ const createToolbox = () => {
         kind: 'category',
         name: 'Movement',
         colour: '120',
+        expanded: true, // Keep this category expanded
         contents: [
           { kind: 'block', type: 'move_forward' },
           { kind: 'block', type: 'turn_left' },
@@ -93,6 +94,7 @@ const createToolbox = () => {
         kind: 'category',
         name: 'Loops',
         colour: '290',
+        expanded: true, // Keep this category expanded
         contents: [
           {
             kind: 'block',
@@ -137,6 +139,7 @@ const createToolbox = () => {
         kind: 'category',
         name: 'Logic',
         colour: '210',
+        expanded: true, // Keep this category expanded
         contents: [
           { kind: 'block', type: 'controls_if' },
           { kind: 'block', type: 'logic_compare' },
@@ -147,6 +150,7 @@ const createToolbox = () => {
         kind: 'category',
         name: 'Math',
         colour: '230',
+        expanded: true, // Keep this category expanded
         contents: [
           { kind: 'block', type: 'math_number' },
           { kind: 'block', type: 'math_arithmetic' },
@@ -157,6 +161,7 @@ const createToolbox = () => {
         name: 'Variables',
         custom: 'VARIABLE',
         colour: '330',
+        expanded: true, // Keep this category expanded
       },
     ],
   }
@@ -349,6 +354,22 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
       applyChanges: applyChangesToGlobalState,
     }))
 
+    // Function to keep the toolbox open
+    const keepToolboxOpen = () => {
+      if (workspaceRef.current && workspaceRef.current.getToolbox()) {
+        const toolbox = workspaceRef.current.getToolbox()
+
+        // For flyout-based toolboxes
+        if (toolbox?.getFlyout && typeof toolbox.getFlyout === 'function') {
+          const flyout = toolbox.getFlyout()
+          if (flyout) {
+            // Disable auto-close behavior
+            flyout.autoClose = false
+          }
+        }
+      }
+    }
+
     // Initialize Blockly
     useEffect(() => {
       if (!blocklyDiv.current) return
@@ -400,6 +421,9 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
           }),
         })
 
+        // Keep the toolbox open initially
+        setTimeout(keepToolboxOpen, 100)
+
         // Monitor drag start/end to prevent updates during drag
         workspaceRef.current.addChangeListener((e: Blockly.Events.Abstract) => {
           if (e.type === Blockly.Events.BLOCK_DRAG) {
@@ -410,6 +434,13 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
             if (!dragEvent.isStart && pendingUpdateRef.current) {
               setTimeout(updateLocalCommands, 100)
             }
+          }
+        })
+
+        // Handle toolbox item selection to keep it open
+        workspaceRef.current.addChangeListener((e: Blockly.Events.Abstract) => {
+          if (e.type === Blockly.Events.TOOLBOX_ITEM_SELECT) {
+            setTimeout(keepToolboxOpen, 0)
           }
         })
 
@@ -508,12 +539,6 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
       }
     }, [commands])
 
-    // Button to manually apply changes
-    const handleApplyChanges = () => {
-      if (disabled) return
-      applyChangesToGlobalState()
-    }
-
     return (
       <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
         <Box
@@ -527,15 +552,6 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
           <Typography variant="body2" color="textSecondary">
             Block Editor ({blockCount}/{MAX_BLOCKS} blocks)
           </Typography>
-
-          <Button
-            variant="outlined"
-            size="small"
-            onClick={handleApplyChanges}
-            disabled={disabled}
-          >
-            Apply Changes
-          </Button>
         </Box>
 
         {blockLimitWarning && (
@@ -562,11 +578,6 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
             width: '100%',
           }}
         />
-
-        <Typography variant="caption" color="textSecondary">
-          Drag blocks from the toolbox. Use loops to repeat commands. Changes
-          will be applied when you run code or switch to text editor.
-        </Typography>
       </Box>
     )
   }
