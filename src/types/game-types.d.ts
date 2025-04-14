@@ -22,7 +22,7 @@ export type LevelData = {
 }
 
 export type HexagonMetrics = {
-  radius: number //R in hexagon
+  radius: number //Radius of the circle that circumscribes the hexagon
   height: number
   horizontalSpacing: number
   verticalSpacing: number

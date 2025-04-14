@@ -1,6 +1,6 @@
 // hooks/useCommandProcessor.ts
 import { useEffect, useCallback, useRef } from 'react'
-import { GridPosition, WorldData } from '../types/game-types'
+import { GridPosition } from '../types/game-types'
 import {
   useGameCommands,
   useGameRunning,

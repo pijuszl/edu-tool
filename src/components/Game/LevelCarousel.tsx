@@ -11,13 +11,13 @@ interface LevelCarouselProps {
   onSelectLevel: (levelIndex: number) => void
 }
 
-export const LevelCarousel: React.FC<LevelCarouselProps> = ({
+export const LevelCarousel = ({
   completedLevels,
   unlockedLevels,
   currentLevelIndex,
   totalLevels,
   onSelectLevel,
-}) => {
+}: LevelCarouselProps) => {
   const [startIndex, setStartIndex] = useState(0)
   const maxVisibleLevels = 10
 
@@ -53,11 +53,9 @@ export const LevelCarousel: React.FC<LevelCarouselProps> = ({
           const isUnlocked = unlockedLevels.includes(levelIndex)
           const isCurrent = currentLevelIndex === levelIndex
 
-          // Determine button classes based on level status
-          let bgColor = 'bg-gray-500' // Default locked
-          if (isCompleted)
-            bgColor = 'bg-green-500' // Completed
-          else if (isUnlocked) bgColor = 'bg-blue-500' // Unlocked
+          let bgColor = 'bg-gray-500'
+          if (isCompleted) bgColor = 'bg-green-500'
+          else if (isUnlocked) bgColor = 'bg-blue-500'
 
           return (
             <Button

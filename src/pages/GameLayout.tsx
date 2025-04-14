@@ -3,7 +3,7 @@ import { Box } from '@mui/material'
 import CodeEditor from '../components/CodeEditor'
 import Game from '../components/Game'
 import PageDivider from '../components/PageDivider'
-import levelData from '../assets/world/world1.json'
+import levelData from '../assets/levels/world1.json'
 
 const GameLayout = () => {
   const [leftWidth, setLeftWidth] = useState(30)

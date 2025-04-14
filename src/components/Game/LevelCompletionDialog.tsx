@@ -22,7 +22,7 @@ interface LevelCompletionDialogProps {
   isLastLevel: boolean
 }
 
-export const LevelCompletionDialog: React.FC<LevelCompletionDialogProps> = ({
+export const LevelCompletionDialog = ({
   open,
   onClose,
   levelIndex,
@@ -30,7 +30,7 @@ export const LevelCompletionDialog: React.FC<LevelCompletionDialogProps> = ({
   totalCollectables,
   onNextLevel,
   isLastLevel,
-}) => {
+}: LevelCompletionDialogProps) => {
   return (
     <Dialog
       open={open}

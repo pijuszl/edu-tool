@@ -5,9 +5,14 @@ import { GamePosition } from '../../types/game-types'
 
 export const Hexagon = ({
   position,
-  isEven,
-}: GamePosition & { isEven: boolean }) => {
+  color,
+}: GamePosition & { color: number }) => {
   const ref = useRef<THREE.Mesh>(null)
+
+  const colorCode = useMemo(() => {
+    const colors = ['#00ff59', '#4aff78', '#10de44', '#0ee85a', '#25db5c']
+    return colors[color % colors.length]
+  }, [color])
 
   const geometry = useMemo(() => {
     const shape = new THREE.Shape()
@@ -38,7 +43,7 @@ export const Hexagon = ({
   return (
     <>
       <mesh ref={ref} geometry={geometry} position={position}>
-        <meshToonMaterial color={isEven ? '#00ff59' : '#0ee85a'} />
+        <meshToonMaterial color={colorCode} />
       </mesh>
     </>
   )
